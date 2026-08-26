@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: versionrag_db
+    environment:
+      POSTGRES_DB: versionrag
+      POSTGRES_USER: versionrag_user
+      POSTGRES_PASSWORD: versionrag_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U versionrag_user -d versionrag"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: versionrag_redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: versionrag_backend
+    environment:
+      DATABASE_URL: postgresql://versionrag_user:versionrag_password@postgres:5432/versionrag
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: versionrag-production-super-secret-key-32-chars-minimum!
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: versionrag_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
