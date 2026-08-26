@@ -54,6 +54,8 @@ When enterprise AI systems index multi-version technical documentation (e.g. Nod
 
 ## 📊 Key Numbers & Measured Performance Gains
 
+![Version Correctness and Cross-Version Contamination Benchmark](docs/assets/benchmark_comparison.png)
+
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                 MEASURED EMPIRICAL METRICS                                       │
@@ -65,17 +67,6 @@ When enterprise AI systems index multi-version technical documentation (e.g. Nod
 │   ⚡ Vector Retrieval Latency:         5.4ms average    (HNSW 1536-dim Index)                    │
 │   🧪 Automated Test Coverage:         17/17 Passing     (100% Pytest suite passing)              │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Visual Benchmark Comparison
-```
-Version Correctness:
-Naive RAG Baseline:  [███████████████░░░░░]  75.0%
-VersionRAG Engine:   [██████████████████░░]  88.2%
-
-Cross-Version Contamination Rate (Lower is Better):
-Naive RAG Baseline:  [█████████████░░░░░░░]  62.5% (Severe Bleeding)
-VersionRAG Engine:   [░░░░░░░░░░░░░░░░░░░░]   0.0% (Zero Bleed Guarantee!)
 ```
 
 ---

@@ -23,6 +23,8 @@ The following benchmark results are generated across **8 multi-version test arch
 
 ## 2. Visual Performance Comparison Graphs
 
+![Version Correctness and Cross-Version Contamination Benchmark](assets/benchmark_comparison.png)
+
 ### 📈 Accuracy & Correctness Comparison
 ```
 Naive RAG Baseline:  [███████████████░░░░░]  75.0% (Failed 2/8 Scenarios)
