@@ -8,6 +8,8 @@ Retrieval-Augmented Generation (RAG) has emerged as the standard architecture fo
 
 > **Academic Finding:** In enterprise technical benchmarks across evolving software documentation, **Naive RAG fails in 58.3% of queries** due to cross-version semantic contamination. Developers receive syntactically valid code that fails at runtime due to deprecated parameters, altered return types, or silent prototype changes.
 
+![Naive RAG Cross-Version Vector Contamination](assets/naive_rag_problem.png)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      THE NAIVE RAG FAILURE PARADOX                          │

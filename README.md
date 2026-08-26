@@ -32,10 +32,13 @@
 
 ## ⚡ The Problem Solved & What Was Challenging
 
-### 🔴 The Problem
-When enterprise AI systems index multi-version technical documentation (e.g. Node.js, Python, internal microservice APIs), standard (Naive) RAG mixes releases together in high-dimensional vector space. 
-- **The Failure:** Chunks from version $V_{16}$ are retrieved for a question about version $V_{14}$ because cosine similarity is $>0.92$.
-- **The Consequence:** LLMs generate code with breaking parameters and hallucinated deprecations, causing **58.3% failure rates** in production.
+### 🔴 The Problem: Semantic & Version Contamination in Vector Space
+
+![Naive RAG Failure Mode & Cross-Version Contamination](docs/assets/naive_rag_problem.png)
+
+When enterprise AI systems index multi-version technical documentation (e.g. Node.js, Python, internal microservice APIs), standard (Naive) RAG mixes releases together in flat high-dimensional vector space:
+- **The Failure:** When a developer asks *"How to create an HTTP server in Node.js v14?"*, semantically similar chunks from version $V_{16}$ are retrieved with higher cosine similarity ($0.94, 0.93, 0.92$) than the correct $V_{14}$ chunk ($0.89$).
+- **The Consequence:** The LLM generates code utilizing $V_{16}$ APIs (such as `server.closeAllConnections()`) inside a $V_{14}$ runtime, leading to **fatal crashes and silent runtime breakage in production**.
 
 ### 🟡 The Challenges Faced
 1. **Semantic Similarity vs. Temporal Boundaries:** Embeddings represent *meanings*, not *versions*. Standard k-NN retrieval cannot separate identical function signatures across releases.
