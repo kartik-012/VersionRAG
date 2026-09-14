@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     VERIFY_TOKEN_EXPIRE_HOURS: int = 24
     RESET_TOKEN_EXPIRE_HOURS: int = 2
 
-    # SMTP Email (Gmail App Password)
+    # SMTP Email (Gmail App Password) 
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
