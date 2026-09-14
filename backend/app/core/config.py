@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional, List
 import os
-
+ 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "VersionRAG"
     API_V1_STR: str = "/api/v1"
