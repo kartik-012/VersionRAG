@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional, List
-import os
+import os 
   
 class Settings(BaseSettings):
     PROJECT_NAME: str = "VersionRAG"
