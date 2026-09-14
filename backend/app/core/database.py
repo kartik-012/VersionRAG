@@ -4,7 +4,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.config import settings
 import os
  
-db_url = settings.DATABASE_URL
+db_url = settings.DATABASE_URL 
 connect_args = {}
 
 if db_url.startswith("sqlite"):
