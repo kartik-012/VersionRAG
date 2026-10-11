@@ -92,3 +92,28 @@ def add_custom_scenario_and_evaluate(
     )
     return EvaluationRunRead.model_validate(eval_run)
 
+
+@router.get("/auto-scenarios/{project_id}")
+def preview_auto_synthesized_scenarios(
+    project_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Preview the 10 auto-synthesized adversarial test questions generated dynamically
+    from the project's uploaded document versions and AST diffs.
+    """
+    from app.models.chunk import DocumentChunk
+    all_chunks = db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).all()
+    scenarios = evaluation_service.synthesize_dynamic_scenarios(
+        db=db,
+        project_id=project_id,
+        all_chunks=all_chunks,
+        target_count=10,
+    )
+    return {
+        "project_id": project_id,
+        "total_generated": len(scenarios),
+        "scenarios": scenarios,
+    }
+
+

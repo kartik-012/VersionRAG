@@ -12,6 +12,7 @@ from app.schemas.document import (
 from app.services.storage_service import storage_service
 from app.services.job_service import job_service
 from app.services.parser_service import parser_service
+from app.services.hybrid_index_service import hybrid_index_manager
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -27,7 +28,7 @@ async def upload_document(
     db: Session = Depends(get_db)
 ):
     """
-    Upload a document (PDF, Markdown, TXT, HTML, DOCX) and trigger the 10-stage ingestion pipeline.
+    Upload a document (PDF, Markdown, TXT, HTML, DOCX) and trigger the non-blocking background ingestion pipeline.
     """
     project, workspace, _ = project_workspace_member
 
@@ -81,8 +82,8 @@ async def upload_document(
         version_id=version.id
     )
 
-    # 6. Execute pipeline in background
-    background_tasks.add_task(job_service.run_ingestion_pipeline, db, job.id)
+    # 6. Execute pipeline in thread-safe background worker
+    background_tasks.add_task(job_service.run_ingestion_pipeline_background, job.id)
 
     return {
         "message": "Document uploaded successfully. Processing pipeline started.",
@@ -130,10 +131,13 @@ def delete_document(
     document_id: str,
     db: Session = Depends(get_db)
 ):
-    """Delete a document and all its versions."""
+    """Delete a document and all its versions, invalidating cached hybrid index partitions."""
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    project_id = doc.project_id
     db.delete(doc)
     db.commit()
+    hybrid_index_manager.invalidate_project(project_id)
     return {"message": "Document deleted successfully"}
+

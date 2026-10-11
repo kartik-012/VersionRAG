@@ -138,6 +138,41 @@ def get_symbol_history(
     versions = sorted(doc.versions, key=lambda v: v.version_order)
     return diff_service.extract_symbol_history(symbol, versions)
 
+from pydantic import BaseModel
+from app.services.ast_parser_service import ast_signature_parser
+
+
+class ASTVerifyRequest(BaseModel):
+    old_title: str
+    old_body: str
+    new_title: str
+    new_body: str
+
+
+@router.post("/ast-verify")
+def verify_ast_contract_diff(req: ASTVerifyRequest):
+    """
+    Parse two code/documentation blocks (Python, TypeScript, JavaScript, OpenAPI)
+    into FunctionNode, ParamNode, ReturnTypeNode, and ExceptionNode AST trees,
+    and return the mathematical breaking vs. non-breaking contract proof.
+    """
+    old_node = ast_signature_parser.extract_section_ast(req.old_title, req.old_body)
+    new_node = ast_signature_parser.extract_section_ast(req.new_title, req.new_body)
+    diff = ast_signature_parser.compare_ast_nodes(
+        old_node=old_node,
+        new_node=new_node,
+        old_body=req.old_body,
+        new_body=req.new_body,
+    )
+    return {
+        "old_ast": old_node.to_dict(),
+        "new_ast": new_node.to_dict(),
+        "has_mutation": diff is not None,
+        "is_breaking": diff.is_breaking if diff else False,
+        "contract_diff": diff.to_dict() if diff else None,
+    }
+
+
 @router.post("/generate-changelog")
 def generate_changelog(
     version_id: str = Query(...),
@@ -161,4 +196,5 @@ def generate_changelog(
         for c in changes
     ]
     return diff_service.synthesize_release_notes(ver.version_tag, raw_changes)
+
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UploadCloud, File, CheckCircle2, AlertCircle, Loader2, X } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, Loader2, X, Cpu } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface UploadModalProps {
@@ -9,17 +9,12 @@ interface UploadModalProps {
   onUploadComplete: () => void;
 }
 
-const STAGES = [
-  'Validating File',
-  'Parsing Content',
-  'Extracting Metadata',
-  'Detecting Version',
-  'Clustering Family',
-  'Chunking Document',
-  'Generating Embeddings',
-  'Detecting Changes',
-  'Indexing Knowledge Base',
-  'Ready',
+const PIPELINE_MILESTONES = [
+  { progress: 0.20, stage: 'parsing', label: 'Stage 1 (20%): Validating & Parsing Document' },
+  { progress: 0.45, stage: 'chunking', label: 'Stage 2 (45%): Version Detection & Structure Chunking' },
+  { progress: 0.70, stage: 'generating_embeddings', label: 'Stage 3 (70%): Semantic Embeddings & Hybrid Partition Indexing' },
+  { progress: 0.90, stage: 'detecting_changes', label: 'Stage 4 (90%): AST Signature & Implicit Diff Detection' },
+  { progress: 1.00, stage: 'ready', label: 'Stage 5 (100%): Knowledge Base Partition Ready' },
 ];
 
 export const UploadModal: React.FC<UploadModalProps> = ({
@@ -31,7 +26,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [versionTag, setVersionTag] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [currentStageIdx, setCurrentStageIdx] = useState(0);
+  const [stageProgress, setStageProgress] = useState<number>(0);
+  const [jobTelemetry, setJobTelemetry] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -43,11 +39,31 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     }
   };
 
+  const pollJobUntilComplete = async (jobId: string) => {
+    const maxAttempts = 60;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const job = await api.getJobStatus(jobId);
+      setStageProgress(job.stage_progress || 0.2);
+      setJobTelemetry(job.execution_meta || {});
+
+      if (job.status === 'completed' || job.current_stage === 'ready') {
+        setStageProgress(1.0);
+        return job;
+      }
+      if (job.status === 'failed' || job.current_stage === 'failed') {
+        throw new Error(job.error_message || 'Background ingestion job failed');
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error('Ingestion job timed out waiting for worker completion');
+  };
+
   const handleUpload = async () => {
     if (!file) return;
     setIsUploading(true);
     setError(null);
-    setCurrentStageIdx(0);
+    setStageProgress(0.1);
+    setJobTelemetry({});
 
     const formData = new FormData();
     formData.append('file', file);
@@ -56,25 +72,28 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     }
 
     try {
-      // Simulate stage progression while processing job runs
-      const stageInterval = setInterval(() => {
-        setCurrentStageIdx((prev) => (prev < STAGES.length - 1 ? prev + 1 : prev));
-      }, 500);
-
       const res = await api.uploadDocument(projectId, formData);
-      clearInterval(stageInterval);
-      setCurrentStageIdx(STAGES.length - 1);
+      if (res.job_id) {
+        await pollJobUntilComplete(res.job_id);
+      } else {
+        setStageProgress(1.0);
+      }
 
       setTimeout(() => {
         setIsUploading(false);
+        setFile(null);
+        setVersionTag('');
         onUploadComplete();
         onClose();
-      }, 800);
+      }, 650);
     } catch (err: any) {
       setError(err.message || 'Upload failed');
       setIsUploading(false);
     }
   };
+
+  const activeMilestoneIdx = PIPELINE_MILESTONES.findIndex((m) => stageProgress <= m.progress);
+  const resolvedIdx = activeMilestoneIdx === -1 ? PIPELINE_MILESTONES.length - 1 : activeMilestoneIdx;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -155,44 +174,88 @@ export const UploadModal: React.FC<UploadModalProps> = ({
             </div>
           </div>
         ) : (
-          /* Live 10-Stage Pipeline Progress */
-          <div className="py-6 space-y-5">
+          /* Live 5-Stage Telemetry Progress */
+          <div className="py-5 space-y-4">
             <div className="text-center">
               <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-2" />
-              <p className="text-sm font-semibold text-white">{STAGES[currentStageIdx]}</p>
+              <p className="text-sm font-semibold text-white">
+                {PIPELINE_MILESTONES[resolvedIdx]?.label}
+              </p>
               <p className="text-xs text-gray-400 mt-1">
-                Stage {currentStageIdx + 1} of {STAGES.length}
+                Real-Time Worker Telemetry: {Math.round(stageProgress * 100)}% Complete
               </p>
             </div>
 
-            {/* Stage Checklist */}
-            <div className="bg-surface-subtle border border-surface-border rounded-lg p-3.5 space-y-2 max-h-48 overflow-y-auto">
-              {STAGES.map((st, i) => {
-                const isPassed = i < currentStageIdx;
-                const isCurrent = i === currentStageIdx;
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-surface-subtle rounded-full overflow-hidden border border-surface-border">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${Math.round(stageProgress * 100)}%` }}
+              />
+            </div>
+
+            {/* 5-Stage Checklist */}
+            <div className="bg-surface-subtle border border-surface-border rounded-lg p-3.5 space-y-2.5">
+              {PIPELINE_MILESTONES.map((m, i) => {
+                const isPassed = stageProgress >= m.progress;
+                const isCurrent = i === resolvedIdx && !isPassed;
                 return (
-                  <div key={i} className="flex items-center gap-2 text-xs">
+                  <div key={m.stage} className="flex items-center gap-2.5 text-xs">
                     {isPassed ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     ) : isCurrent ? (
-                      <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+                      <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
                     ) : (
-                      <div className="w-3.5 h-3.5 rounded-full border border-gray-600" />
+                      <div className="w-4 h-4 rounded-full border border-gray-600 shrink-0" />
                     )}
                     <span
                       className={
-                        isPassed ? 'text-gray-400 line-through' : isCurrent ? 'text-white font-semibold' : 'text-gray-600'
+                        isPassed
+                          ? 'text-emerald-300 font-medium'
+                          : isCurrent
+                          ? 'text-white font-semibold'
+                          : 'text-gray-500'
                       }
                     >
-                      {st}
+                      {m.label}
                     </span>
                   </div>
                 );
               })}
             </div>
+
+            {/* Live Worker Telemetry Badges */}
+            {Object.keys(jobTelemetry).length > 0 && (
+              <div className="bg-surface-subtle/60 border border-surface-border rounded-lg p-3 text-[11px] text-gray-300 flex flex-wrap gap-2 items-center">
+                <span className="flex items-center gap-1 text-primary-light font-semibold">
+                  <Cpu className="w-3.5 h-3.5" /> Telemetry:
+                </span>
+                {jobTelemetry.detected_version && (
+                  <span className="px-2 py-0.5 rounded bg-surface border border-surface-border">
+                    Version: <b>{jobTelemetry.detected_version}</b>
+                  </span>
+                )}
+                {typeof jobTelemetry.chunks_created === 'number' && (
+                  <span className="px-2 py-0.5 rounded bg-surface border border-surface-border">
+                    Chunks: <b>{jobTelemetry.chunks_created}</b>
+                  </span>
+                )}
+                {typeof jobTelemetry.changes_detected === 'number' && (
+                  <span className="px-2 py-0.5 rounded bg-surface border border-surface-border">
+                    Diffs: <b>{jobTelemetry.changes_detected}</b> ({jobTelemetry.silent_changes || 0} silent)
+                  </span>
+                )}
+                {typeof jobTelemetry.duration_ms === 'number' && (
+                  <span className="px-2 py-0.5 rounded bg-surface border border-surface-border">
+                    Time: <b>{jobTelemetry.duration_ms}ms</b>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 };
+

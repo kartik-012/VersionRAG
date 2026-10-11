@@ -6,7 +6,9 @@ from app.models.document import Document, DocumentVersion
 from app.models.chunk import DocumentChunk
 from app.models.change import DocumentChange
 from app.models.conversation import QueryArchetype, ConfidenceLevel, Citation, Message, Conversation
+from sqlalchemy import or_
 from app.services.embedding_service import embedding_service
+from app.services.hybrid_index_service import hybrid_index_manager
 from app.core.config import settings
 
 class RAGService:
@@ -28,7 +30,7 @@ class RAGService:
             return QueryArchetype.SILENT_CHANGE_QUERY, target_v, compare_v
 
         # Archetype 7: Conflict
-        if "conflict" in q_lower or "disagree" in q_lower or "why does" in q_lower and "say" in q_lower:
+        if "conflict" in q_lower or "disagree" in q_lower or ("why does" in q_lower and "say" in q_lower):
             return QueryArchetype.CONFLICT_QUERY, target_v, compare_v
 
         # Archetype 3: Version comparison
@@ -55,71 +57,86 @@ class RAGService:
         return QueryArchetype.CONTENT_QUERY, target_v, compare_v
 
     @staticmethod
+    def _build_version_predicate(ver_str: str):
+        """Builds a SQL predicate matching exact version tags or major version prefixes (e.g. 'v14' -> 'v14.0.0')."""
+        clean_tag = ver_str if ver_str.startswith("v") else f"v{ver_str}"
+        raw_num = ver_str.lstrip("v")
+        return or_(
+            DocumentChunk.version_tag.ilike(clean_tag),
+            DocumentChunk.version_tag.ilike(f"{clean_tag}.%"),
+            DocumentVersion.normalized_version == ver_str,
+            DocumentVersion.normalized_version == raw_num,
+        )
+
+    @classmethod
     def retrieve_candidates(
+        cls,
         db: Session,
         project_id: str,
         question: str,
         target_version: Optional[str] = None,
         scope: str = "current",
-        top_k: int = 5
+        top_k: int = 5,
+        compare_to_version: Optional[str] = None,
     ) -> List[Tuple[DocumentChunk, float]]:
         """
-        Version-aware candidate retrieval.
-        Applies version metadata filtering BEFORE semantic scoring.
+        Enterprise Partitioned Hybrid Retrieval Engine:
+        1. Composite B-Tree SQL Partitioning on (project_id, version_tag).
+        2. Contiguous BLAS Matrix Cosine Index + Code-Aware Okapi BM25 Index.
+        3. Reciprocal Rank Fusion (RRF) + API Symbol Exact-Match Reranking.
         """
-        query_vec = embedding_service.get_embedding(question)
-
-        # Base query joined with Document and Version
         query = (
             db.query(DocumentChunk)
             .join(DocumentVersion, DocumentChunk.version_id == DocumentVersion.id)
-            .join(Document, DocumentChunk.document_id == Document.id)
-            .filter(Document.project_id == project_id)
+            .filter(DocumentChunk.project_id == project_id)
         )
 
-        # Apply strict version filtering if target_version is specified or scope is specific
-        if target_version and scope not in ["all", "compare", "timeline", "conflict"]:
-            clean_tag = target_version if target_version.startswith("v") else f"v{target_version}"
-            query = query.filter(
-                (DocumentChunk.version_tag.ilike(clean_tag)) |
-                (DocumentVersion.normalized_version == target_version)
-            )
+        partition_key = "ALL"
 
-        chunks = query.all()
+        # Case A: Dual-Version Comparison Partition
+        if target_version and compare_to_version and scope in ["compare", "current"]:
+            query = query.filter(
+                or_(
+                    cls._build_version_predicate(target_version),
+                    cls._build_version_predicate(compare_to_version),
+                )
+            )
+            partition_key = f"COMPARE:{target_version.lower()}:{compare_to_version.lower()}"
+
+        # Case B: Strict Single-Version Partition
+        elif target_version and scope not in ["all", "compare", "timeline", "conflict"]:
+            query = query.filter(cls._build_version_predicate(target_version))
+            partition_key = f"VER:{target_version.lower()}"
+
+        chunks = query.order_by(DocumentChunk.chunk_index.asc()).all()
+
+        # Fallback only if the requested version tag does not exist in the project at all
         if not chunks:
-            # If no version-specific chunks found, check if document exists in project
-            all_chunks = db.query(DocumentChunk).filter(DocumentChunk.project_id == project_id).all()
+            all_chunks = (
+                db.query(DocumentChunk)
+                .filter(DocumentChunk.project_id == project_id)
+                .order_by(DocumentChunk.chunk_index.asc())
+                .all()
+            )
             if not all_chunks:
                 return []
             chunks = all_chunks
+            partition_key = "FALLBACK_ALL"
 
-        # Score chunks with Cosine Similarity + Keyword Boost
-        scored_chunks: List[Tuple[DocumentChunk, float]] = []
-        q_words = set(re.findall(r"\w+", question.lower()))
+        # Compile or fetch cached PartitionedHybridIndex (Dense Matrix + Okapi BM25 + RRF)
+        hybrid_index = hybrid_index_manager.get_or_build(
+            project_id=project_id,
+            partition_key=partition_key,
+            chunks=chunks,
+        )
 
-        for ch in chunks:
-            chunk_vec = ch.embedding
-            if not chunk_vec:
-                # Generate on the fly if not cached
-                chunk_vec = embedding_service.get_embedding(ch.content)
-                ch.embedding = chunk_vec
+        hits = hybrid_index.search(
+            question=question,
+            target_version=target_version,
+            top_k=top_k,
+        )
 
-            cos_sim = embedding_service.cosine_similarity(query_vec, chunk_vec)
-            
-            # Keyword overlap boost (BM25-style lexical complement)
-            chunk_words = set(re.findall(r"\w+", ch.content.lower()))
-            overlap = len(q_words.intersection(chunk_words)) / max(1, len(q_words))
-            hybrid_score = (0.7 * cos_sim) + (0.3 * overlap)
-
-            # Extra boost if chunk version matches target version explicitly
-            if target_version and target_version.lower() in ch.version_tag.lower():
-                hybrid_score += 0.15
-
-            scored_chunks.append((ch, hybrid_score))
-
-        # Sort by hybrid score descending
-        scored_chunks.sort(key=lambda x: x[1], reverse=True)
-        return scored_chunks[:top_k]
+        return [(hit.chunk, hit.final_score) for hit in hits]
 
     @staticmethod
     def calculate_confidence(
@@ -233,7 +250,8 @@ class RAGService:
             question=question,
             target_version=final_target_v,
             scope=scope,
-            top_k=6
+            top_k=6,
+            compare_to_version=final_compare_v,
         )
 
         # If no candidates found with strict filter, fallback to all project chunks
@@ -306,7 +324,7 @@ class RAGService:
         candidates: List[Tuple[DocumentChunk, float]],
         conflict_summary: Optional[str]
     ) -> str:
-        """Rich grounded technical answer synthesis."""
+        """Rich grounded technical answer synthesis with dynamic Live LLM Provider routing."""
         if not candidates:
             return f"No documented evidence found for '{question}' in the indexed knowledge base."
 
@@ -320,6 +338,20 @@ class RAGService:
             evidence_points.append(f"• **[{ch.version_tag}] {ch.section_title or 'API Spec'}**: {ch.content.strip()[:240]}...")
 
         evidence_summary = "\n".join(evidence_points)
+
+        # Route to external LLM (Gemini / OpenAI / Anthropic / Groq) if dynamically activated in UI/API
+        try:
+            from app.services.llm_provider_service import llm_provider_service
+            live_resp = llm_provider_service.generate_live_answer(
+                question=question,
+                target_version=target_v or v_tag,
+                evidence_context=evidence_summary,
+                conflict_summary=conflict_summary,
+            )
+            if live_resp:
+                return live_resp
+        except Exception:
+            pass
 
         if archetype == QueryArchetype.VERSION_SPECIFIC_QUERY:
             return (

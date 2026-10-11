@@ -36,6 +36,8 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
   const [openReasoningMap, setOpenReasoningMap] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
+  const [streamStages, setStreamStages] = useState<Array<{ stage: number; title: string; detail: string }>>([]);
+  const [streamingAnswer, setStreamingAnswer] = useState('');
 
   const availableVersions = ['v14.0.0', 'v15.14.0', 'v16.0.0'];
 
@@ -149,13 +151,29 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
 
     setLoading(true);
     setQueryError(null);
+    setStreamStages([]);
+    setStreamingAnswer('');
     try {
-      const res = await api.askQuestion({
-        question: q,
-        project_id: project.id,
-        target_version: scope === 'all' ? undefined : tVer,
-        scope: scope,
-      });
+      const res = await api.streamQuestion(
+        {
+          question: q,
+          project_id: project.id,
+          target_version: scope === 'all' ? undefined : tVer,
+          scope: scope,
+          compare_to_version: scope === 'compare' ? compareVersion : undefined,
+        },
+        {
+          onStage: (ev) => {
+            setStreamStages((prev) => {
+              const filtered = prev.filter((s) => s.stage !== ev.stage);
+              return [...filtered, { stage: ev.stage, title: ev.title, detail: ev.detail }];
+            });
+          },
+          onToken: (delta) => {
+            setStreamingAnswer((prev) => prev + delta);
+          },
+        }
+      );
 
       // Ensure res includes the question asked
       const fullRes: QueryResponse = {
@@ -459,7 +477,7 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Active Loading Skeleton */}
+          {/* Active Live SSE Reasoning & Token Stream Panel */}
           <AnimatePresence>
             {loading && (
               <motion.div
@@ -472,16 +490,40 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
                   <div className="flex items-center gap-2">
                     <RefreshCw className="w-4 h-4 text-primary-light animate-spin" />
                     <span className="text-xs font-bold text-white font-mono">
-                      VERSIONRAG MULTI-VERSION REASONING ENGINE ACTIVE...
+                      VERSIONRAG SSE STREAMING ENGINE ACTIVE...
                     </span>
                   </div>
-                  <span className="text-[10px] text-gray-400 font-mono">Synthesizing ground truth</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">
+                    {streamStages.length > 0 ? `Stage ${streamStages.length}/4` : 'Connecting SSE Stream'}
+                  </span>
                 </div>
-                <div className="space-y-2.5 shimmer-effect rounded-lg p-2">
-                  <div className="h-3.5 bg-surface-subtle/80 rounded w-3/4"></div>
-                  <div className="h-3.5 bg-surface-subtle/80 rounded w-full"></div>
-                  <div className="h-3.5 bg-surface-subtle/80 rounded w-5/6"></div>
-                </div>
+
+                {streamStages.length > 0 && (
+                  <div className="bg-surface-subtle/80 border border-surface-border rounded-xl p-3.5 space-y-2 text-[11px] font-mono">
+                    {streamStages.map((st) => (
+                      <div key={st.stage} className="flex items-center justify-between gap-2 text-gray-300">
+                        <span className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <strong className="text-white">Stage {st.stage}: {st.title}</strong>
+                        </span>
+                        <span className="text-gray-400 truncate">{st.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {streamingAnswer ? (
+                  <div className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap bg-background/70 p-4 rounded-xl border border-primary/30 font-normal">
+                    {streamingAnswer}
+                    <span className="inline-block w-2 h-4 ml-1 bg-primary animate-pulse align-middle" />
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 shimmer-effect rounded-lg p-2">
+                    <div className="h-3.5 bg-surface-subtle/80 rounded w-3/4"></div>
+                    <div className="h-3.5 bg-surface-subtle/80 rounded w-full"></div>
+                    <div className="h-3.5 bg-surface-subtle/80 rounded w-5/6"></div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

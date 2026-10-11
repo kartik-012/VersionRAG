@@ -2,6 +2,7 @@ import difflib
 import re
 from typing import List, Dict, Any, Tuple
 from app.models.change import ChangeType, ChangeSeverity
+from app.services.ast_parser_service import ast_signature_parser, FunctionASTNode
 
 class DiffService:
     @staticmethod
@@ -77,41 +78,86 @@ class DiffService:
         return changes
 
     @staticmethod
+    def _is_mentioned_in_changelog(symbol_name: str, section_title: str, explicit_summaries: List[str]) -> bool:
+        """Checks whether a symbol or section title is referenced in any explicit changelog entry."""
+        sym_clean = symbol_name.lower().strip("`")
+        sec_clean = section_title.lower().strip("`")
+        tail_sym = sym_clean.split(".")[-1] if "." in sym_clean else sym_clean
+
+        for summary in explicit_summaries:
+            s_low = summary.lower()
+            if sym_clean in s_low or sec_clean in s_low:
+                return True
+            if len(tail_sym) > 3 and tail_sym in s_low:
+                return True
+        return False
+
+    @classmethod
     def detect_implicit_section_diffs(
+        cls,
         old_content: str,
         new_content: str,
         explicit_summaries: List[str]
     ) -> List[Dict[str, Any]]:
         """
-        Deep structural content diff between two versions.
-        Detects silent changes (changes in behavior/API not mentioned in changelogs).
+        Deep AST & API Signature structural diff between two versions.
+        Parses each section into a `FunctionASTNode` (parameters, optionality, defaults,
+        return types, exceptions, equality operators, and Python AST bodies) and detects
+        silent breaking/behavioral changes omitted from release notes.
         """
         changes = []
 
-        # Split into sections by H2/H3 headings
+        # Split into sections by H2/H3 headings (excluding Changelog section itself)
         def parse_sections(text: str) -> Dict[str, str]:
             secs = {}
             current_title = "General"
             buf = []
             for line in text.splitlines():
                 if line.startswith("## ") or line.startswith("### "):
-                    if buf:
+                    if buf and current_title.lower() not in ("changelog", "release notes", "changes", "history"):
                         secs[current_title] = "\n".join(buf).strip()
                     current_title = line.lstrip("#").strip()
                     buf = []
                 else:
                     buf.append(line)
-            if buf:
+            if buf and current_title.lower() not in ("changelog", "release notes", "changes", "history"):
                 secs[current_title] = "\n".join(buf).strip()
             return secs
 
         old_secs = parse_sections(old_content)
         new_secs = parse_sections(new_content)
 
-        # 1. Added Sections
-        for sec_name, new_body in new_secs.items():
-            if sec_name not in old_secs:
-                is_silent = not any(sec_name.lower() in s.lower() for s in explicit_summaries)
+        # Parse all sections into FunctionASTNodes keyed by canonical symbol_name
+        old_ast_map: Dict[str, Tuple[str, str, FunctionASTNode]] = {}
+        for sec_name, body in old_secs.items():
+            node = ast_signature_parser.extract_section_ast(sec_name, body)
+            old_ast_map[node.symbol_name] = (sec_name, body, node)
+
+        new_ast_map: Dict[str, Tuple[str, str, FunctionASTNode]] = {}
+        for sec_name, body in new_secs.items():
+            node = ast_signature_parser.extract_section_ast(sec_name, body)
+            new_ast_map[node.symbol_name] = (sec_name, body, node)
+
+        category_to_enum = {
+            "breaking": ChangeType.BREAKING,
+            "deprecated": ChangeType.DEPRECATED,
+            "removed": ChangeType.REMOVED,
+            "added": ChangeType.ADDED,
+            "behavioral": ChangeType.BEHAVIORAL,
+            "modified": ChangeType.MODIFIED,
+        }
+        severity_to_enum = {
+            "critical": ChangeSeverity.CRITICAL,
+            "high": ChangeSeverity.HIGH,
+            "medium": ChangeSeverity.MEDIUM,
+            "low": ChangeSeverity.LOW,
+        }
+
+        # 1. Added Symbols / Sections
+        for sym_name, (sec_name, new_body, new_node) in new_ast_map.items():
+            if sym_name not in old_ast_map:
+                is_silent = not cls._is_mentioned_in_changelog(sym_name, sec_name, explicit_summaries)
+                param_sig = f" ({len(new_node.params)} params)" if new_node.params else ""
                 changes.append({
                     "location": sec_name,
                     "change_type": ChangeType.ADDED,
@@ -120,15 +166,15 @@ class DiffService:
                     "is_breaking": False,
                     "old_content": None,
                     "new_content": new_body[:500],
-                    "summary": f"Added new section/API: '{sec_name}'",
-                    "source": "implicit_diff",
-                    "confidence": 0.90
+                    "summary": f"Added new API symbol/section: '{sec_name}'{param_sig}",
+                    "source": "ast_structural_diff",
+                    "confidence": 0.94,
                 })
 
-        # 2. Removed Sections
-        for sec_name, old_body in old_secs.items():
-            if sec_name not in new_secs:
-                is_silent = not any(sec_name.lower() in s.lower() for s in explicit_summaries)
+        # 2. Removed Symbols / Sections
+        for sym_name, (sec_name, old_body, old_node) in old_ast_map.items():
+            if sym_name not in new_ast_map:
+                is_silent = not cls._is_mentioned_in_changelog(sym_name, sec_name, explicit_summaries)
                 changes.append({
                     "location": sec_name,
                     "change_type": ChangeType.REMOVED,
@@ -137,46 +183,43 @@ class DiffService:
                     "is_breaking": True,
                     "old_content": old_body[:500],
                     "new_content": None,
-                    "summary": f"Removed section/API: '{sec_name}'",
-                    "source": "implicit_diff",
-                    "confidence": 0.92
+                    "summary": f"Removed API symbol/section: '{sec_name}'" + (" (Silent removal - not in changelog)" if is_silent else ""),
+                    "source": "ast_structural_diff",
+                    "confidence": 0.96,
                 })
 
-        # 3. Modified Sections
-        for sec_name, old_body in old_secs.items():
-            if sec_name in new_secs:
-                new_body = new_secs[sec_name]
-                if old_body.strip() != new_body.strip():
-                    # Analyze severity & nature of change
-                    change_type = ChangeType.MODIFIED
-                    severity = ChangeSeverity.MEDIUM
-                    is_breaking = False
-                    is_silent = not any(sec_name.lower() in s.lower() for s in explicit_summaries)
+        # 3. Modified Symbols / Sections (Evaluated via ASTContractDiff)
+        for sym_name, (old_sec_name, old_body, old_node) in old_ast_map.items():
+            if sym_name in new_ast_map:
+                new_sec_name, new_body, new_node = new_ast_map[sym_name]
+                if old_body.strip() != new_body.strip() or old_sec_name != new_sec_name:
+                    ast_diff = ast_signature_parser.compare_ast_nodes(
+                        old_node=old_node,
+                        new_node=new_node,
+                        old_body=old_body,
+                        new_body=new_body,
+                    )
+                    if ast_diff is None:
+                        continue
 
-                    # Check for deprecation keywords
-                    if "deprecat" in new_body.lower() and "deprecat" not in old_body.lower():
-                        change_type = ChangeType.DEPRECATED
-                        severity = ChangeSeverity.HIGH
-                    # Check for breaking signature / error change
-                    elif "throws" in new_body.lower() and "throws" not in old_body.lower():
-                        change_type = ChangeType.BREAKING
-                        severity = ChangeSeverity.CRITICAL
-                        is_breaking = True
-                    elif "behavior" in new_body.lower() or "returns" in new_body.lower():
-                        change_type = ChangeType.BEHAVIORAL
-                        severity = ChangeSeverity.HIGH
+                    is_silent = not cls._is_mentioned_in_changelog(sym_name, new_sec_name, explicit_summaries)
+                    change_type = category_to_enum.get(ast_diff.change_category, ChangeType.MODIFIED)
+                    severity = severity_to_enum.get(ast_diff.severity_level, ChangeSeverity.MEDIUM)
+                    is_breaking = ast_diff.is_breaking
 
+                    silent_suffix = " (Silent change - not in changelog)" if is_silent else ""
                     changes.append({
-                        "location": sec_name,
+                        "location": new_sec_name,
                         "change_type": change_type,
                         "severity": severity,
                         "is_silent": is_silent,
                         "is_breaking": is_breaking,
                         "old_content": old_body[:500],
                         "new_content": new_body[:500],
-                        "summary": f"Modified behavior in '{sec_name}'" + (" (Silent change - not in changelog)" if is_silent else ""),
-                        "source": "implicit_diff",
-                        "confidence": 0.88
+                        "summary": f"Modified behavior in '{new_sec_name}': {ast_diff.proof_summary}{silent_suffix}",
+                        "source": "ast_structural_diff",
+                        "confidence": 0.93,
+                        "ast_details": ast_diff.details,
                     })
 
         return changes

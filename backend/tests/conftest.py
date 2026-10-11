@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import Base, get_db
 from app.core.rate_limit import rate_limiter
+from app.services.hybrid_index_service import hybrid_index_manager
 from app.main import app
 
 # Create in-memory SQLite database for test isolation
@@ -25,10 +26,12 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_
 
 @pytest.fixture(autouse=True)
 def clean_rate_limits():
-    """Reset rate limiter state before and after every test."""
+    """Reset rate limiter and hybrid index cache before and after every test."""
     rate_limiter.clear_all()
+    hybrid_index_manager.clear()
     yield
     rate_limiter.clear_all()
+    hybrid_index_manager.clear()
 
 @pytest.fixture(scope="function")
 def db_session():

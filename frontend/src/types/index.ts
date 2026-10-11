@@ -154,6 +154,7 @@ export interface ProcessingJob {
   stage_progress: number;
   error_message?: string;
   retry_count: number;
+  execution_meta?: Record<string, any>;
   created_at: string;
 }
 

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Workspace, Project } from '../types';
 import { VersionBadge } from './VersionBadge';
 import { ViewType } from './Sidebar';
+import { api } from '../lib/api';
 
 interface NavbarProps {
   user: User | null;
@@ -48,12 +49,51 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const [isTelemetryHovered, setIsTelemetryHovered] = useState(false);
+
+  const [activeProvider, setActiveProvider] = useState('local_deterministic');
+  const [activeModel, setActiveModel] = useState('VersionRAG-v1-Deterministic');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [maskedKey, setMaskedKey] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState(false);
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const projectRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    api.getLlmConfig()
+      .then((cfg) => {
+        setActiveProvider(cfg.active_provider);
+        setActiveModel(cfg.active_model);
+        setMaskedKey(cfg.masked_api_key || null);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleApplyProvider = async (providerId: string, defaultModel: string) => {
+    setSavingKey(true);
+    try {
+      const updated = await api.updateLlmConfig({
+        provider: providerId,
+        model_name: defaultModel,
+        api_key: apiKeyInput.trim() || undefined,
+      });
+      setActiveProvider(updated.active_provider);
+      setActiveModel(updated.active_model);
+      setMaskedKey(updated.masked_api_key || null);
+      setApiKeyInput('');
+    } catch {
+      // Fallback local state update
+      setActiveProvider(providerId);
+      setActiveModel(defaultModel);
+    } finally {
+      setSavingKey(false);
+    }
+  };
 
   // Close menus on click outside
   useEffect(() => {
@@ -69,6 +109,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       }
       if (userRef.current && !userRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
+      }
+      if (modelRef.current && !modelRef.current.contains(event.target as Node)) {
+        setIsModelMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -310,6 +353,104 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="text-gray-500">Contamination:</span>
                     <span className="text-emerald-400 font-bold">0.0% (Verified)</span>
                   </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Live AI Model & API Key Switcher */}
+        <div className="relative" ref={modelRef}>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setIsModelMenuOpen(!isModelMenuOpen)}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-subtle/80 hover:bg-surface-hover border border-surface-border text-xs text-gray-200 transition shadow-sm"
+            title="Switch Live LLM Provider & API Key"
+          >
+            <Key className="w-3.5 h-3.5 text-amber-400" />
+            <span className="font-mono text-[11px] font-semibold text-white">
+              {activeProvider === 'local_deterministic'
+                ? 'Local Engine'
+                : activeProvider.toUpperCase()}
+            </span>
+            <ChevronDown className="w-3 h-3 text-gray-400" />
+          </motion.button>
+
+          <AnimatePresence>
+            {isModelMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 mt-2 w-80 glass-panel rounded-2xl shadow-2xl p-4 z-50 border border-surface-border space-y-3 glow-primary"
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-surface-border">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-white">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <span>Live LLM & API Key Switcher</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                    Hot-Swap
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {[
+                    { id: 'local_deterministic', name: 'Local Deterministic Engine', model: 'VersionRAG-v1-Deterministic', badge: 'Zero-Key' },
+                    { id: 'gemini', name: 'Google Gemini 1.5 Pro', model: 'gemini-1.5-pro', badge: 'Google AI' },
+                    { id: 'openai', name: 'OpenAI GPT-4o-mini', model: 'gpt-4o-mini', badge: 'OpenAI' },
+                    { id: 'anthropic', name: 'Anthropic Claude 3.5', model: 'claude-3-5-sonnet-latest', badge: 'Anthropic' },
+                    { id: 'groq', name: 'Groq Llama-3.3-70B', model: 'llama-3.3-70b-versatile', badge: 'LPU Fast' },
+                  ].map((prov) => {
+                    const isSelected = activeProvider === prov.id;
+                    return (
+                      <button
+                        key={prov.id}
+                        disabled={savingKey}
+                        onClick={() => handleApplyProvider(prov.id, prov.model)}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition border ${
+                          isSelected
+                            ? 'bg-primary/20 border-primary/50 text-white'
+                            : 'bg-surface-subtle/60 hover:bg-surface-hover border-surface-border text-gray-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-semibold">{prov.name}</div>
+                          <div className="text-[10px] text-gray-400 font-mono">{prov.model}</div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-surface border border-surface-border text-gray-300">
+                            {prov.badge}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 border-t border-surface-border space-y-2">
+                  <label className="block text-[10px] font-mono uppercase text-gray-400">
+                    Paste Provider API Key (Optional for Local Mode)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={maskedKey ? `Saved: ${maskedKey}` : 'AIza... / sk-... / gsk_...'}
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    className="w-full bg-background border border-surface-border rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 font-mono focus:outline-none focus:border-primary"
+                  />
+                  {apiKeyInput.trim() && (
+                    <button
+                      onClick={() => handleApplyProvider(activeProvider === 'local_deterministic' ? 'gemini' : activeProvider, activeModel)}
+                      disabled={savingKey}
+                      className="w-full py-1.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold transition"
+                    >
+                      {savingKey ? 'Saving Key...' : 'Save Key & Activate Provider'}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}

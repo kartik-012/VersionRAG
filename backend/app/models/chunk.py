@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON, Float
+from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON, Float, Index
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.models.base import UUIDMixin, TimestampMixin
@@ -6,6 +6,10 @@ from app.models.base import UUIDMixin, TimestampMixin
 class DocumentChunk(Base, UUIDMixin, TimestampMixin):
     """Represents an atomic, version-tagged content chunk."""
     __tablename__ = "document_chunks"
+    __table_args__ = (
+        Index("ix_chunk_project_version", "project_id", "version_tag"),
+        Index("ix_chunk_document_version", "document_id", "version_tag"),
+    )
 
     workspace_id = Column(String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
     project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
