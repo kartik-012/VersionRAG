@@ -611,6 +611,99 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
                       </motion.div>
                     )}
 
+                    {/* Feature 4: Interactive Multi-Version Compatibility Matrix (v14 vs v15 vs v16) */}
+                    {resp.compatibility_matrix && resp.compatibility_matrix.length >= 2 && (
+                      <div className="rounded-2xl bg-surface-subtle/90 border border-indigo-500/30 p-4 space-y-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold uppercase border border-indigo-500/30">
+                              Ambiguity Resolver
+                            </span>
+                            <span className="font-bold text-white">
+                              Version Compatibility Matrix ({resp.compatibility_matrix.map((m) => m.version_tag).join(' vs ')})
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
+                              resp.is_invariant
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : 'bg-amber-500/20 text-amber-300'
+                            }`}
+                          >
+                            {resp.is_invariant ? 'Invariant Across Releases' : 'Behavior Diverges Across Releases'}
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-xl border border-surface-border bg-background/80">
+                          <table className="w-full text-left text-[11px]">
+                            <thead className="bg-surface-subtle text-gray-400 font-mono text-[10px] uppercase border-b border-surface-border">
+                              <tr>
+                                <th className="p-2.5">Release</th>
+                                <th className="p-2.5">Contract Status</th>
+                                <th className="p-2.5">Flags</th>
+                                <th className="p-2.5">Version-Specific Behavior</th>
+                                <th className="p-2.5 text-right">Lock Scope</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-surface-border">
+                              {resp.compatibility_matrix.map((row, rIdx) => (
+                                <tr key={rIdx} className="hover:bg-surface-subtle/50 transition">
+                                  <td className="p-2.5 font-mono">
+                                    <VersionBadge version={row.version_tag} size="sm" />
+                                  </td>
+                                  <td className="p-2.5 font-semibold">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                                        row.status.includes('Removed') || row.status.includes('Breaking')
+                                          ? 'bg-rose-500/20 text-rose-400'
+                                          : row.status.includes('Deprecated') || row.status.includes('Silent')
+                                          ? 'bg-amber-500/20 text-amber-300'
+                                          : row.status.includes('Not Available')
+                                          ? 'bg-gray-500/20 text-gray-400'
+                                          : 'bg-emerald-500/20 text-emerald-400'
+                                      }`}
+                                    >
+                                      {row.status}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 font-mono text-[10px] space-x-1">
+                                    {row.is_breaking && (
+                                      <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                                        BREAKING
+                                      </span>
+                                    )}
+                                    {row.is_silent && (
+                                      <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                                        SILENT
+                                      </span>
+                                    )}
+                                    {!row.is_breaking && !row.is_silent && (
+                                      <span className="text-gray-500">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2.5 text-gray-300 max-w-xs truncate" title={row.behavior_summary}>
+                                    {row.behavior_summary}
+                                  </td>
+                                  <td className="p-2.5 text-right">
+                                    <button
+                                      onClick={() => {
+                                        setScope('specific');
+                                        setTargetVersion(row.version_tag);
+                                        handleAsk(resp.question, row.version_tag);
+                                      }}
+                                      className="px-2 py-1 rounded bg-primary/20 hover:bg-primary text-primary-light hover:text-white font-mono text-[10px] transition"
+                                    >
+                                      Lock {row.version_tag}
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Collapsible Chain-of-Version-Reasoning (X-Ray Thinking Trace) */}
                     <div className="rounded-xl bg-surface-subtle/80 border border-surface-border overflow-hidden text-xs">
                       <button
@@ -721,9 +814,25 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
                                   {cit.section_title || 'General API'}
                                 </span>
                                 <span className="text-emerald-400 font-mono font-bold">
-                                  {Math.round(cit.similarity_score * 100)}% Match
+                                  {Math.round(cit.similarity_score * 100)}% Hybrid RRF
                                 </span>
                               </div>
+
+                              {cit.retrieval_telemetry && (
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[9px] font-mono">
+                                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+                                    BM25 #{cit.retrieval_telemetry.bm25_rank} ({Math.round((cit.retrieval_telemetry.bm25_score || 0) * 100)}%)
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                                    Dense #{cit.retrieval_telemetry.dense_rank} ({Math.round((cit.retrieval_telemetry.dense_score || 0) * 100)}%)
+                                  </span>
+                                  {(cit.retrieval_telemetry.symbol_boost || 0) > 0 && (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                                      +AST Boost {Math.round((cit.retrieval_telemetry.symbol_boost || 0) * 100)}%
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </motion.div>
                           ))}
                         </div>

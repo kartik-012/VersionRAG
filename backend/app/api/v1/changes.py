@@ -140,6 +140,7 @@ def get_symbol_history(
 
 from pydantic import BaseModel
 from app.services.ast_parser_service import ast_signature_parser
+from app.services.code_scanner_service import code_scanner_service
 
 
 class ASTVerifyRequest(BaseModel):
@@ -147,6 +148,71 @@ class ASTVerifyRequest(BaseModel):
     old_body: str
     new_title: str
     new_body: str
+
+
+class CodeScanRequest(BaseModel):
+    from_version_id: str
+    to_version_id: str
+    code_snippet: str
+
+
+@router.post("/scan-code")
+def scan_production_code(req: CodeScanRequest, db: Session = Depends(get_db)):
+    """
+    Live Codebase Impact & Breaking-Change Scanner (Repo Vulnerability & Upgrade Auditor).
+    Scans a developer's production code snippet against the AST Diff Graph between
+    `from_version_id` and `to_version_id`, highlights exact vulnerable lines (including
+    silent breaking changes), and outputs auto-refactored target-version code + unified diff.
+    """
+    v_from = db.query(DocumentVersion).filter(DocumentVersion.id == req.from_version_id).first()
+    v_to = db.query(DocumentVersion).filter(DocumentVersion.id == req.to_version_id).first()
+    if not v_from or not v_to:
+        raise HTTPException(status_code=404, detail="One or both versions not found")
+
+    # Collect all intermediate and direct changes across the upgrade trajectory
+    all_doc_versions = (
+        db.query(DocumentVersion)
+        .filter(DocumentVersion.document_id == v_from.document_id)
+        .all()
+    )
+    min_order = min(v_from.version_order, v_to.version_order)
+    max_order = max(v_from.version_order, v_to.version_order)
+    trajectory_version_ids = {
+        v.id for v in all_doc_versions if min_order < v.version_order <= max_order
+    }
+    trajectory_version_ids.add(v_to.id)
+
+    changes = (
+        db.query(DocumentChange)
+        .filter(
+            DocumentChange.document_id == v_from.document_id,
+            DocumentChange.to_version_id.in_(list(trajectory_version_ids)),
+        )
+        .all()
+    )
+
+    stored_changes = [
+        {
+            "location": c.location,
+            "change_type": c.change_type,
+            "severity": c.severity,
+            "is_breaking": c.is_breaking,
+            "is_silent": c.is_silent,
+            "summary": c.summary,
+            "old_content": c.old_content,
+            "new_content": c.new_content,
+        }
+        for c in changes
+    ]
+
+    return code_scanner_service.scan_code_snippet(
+        code_snippet=req.code_snippet,
+        from_tag=v_from.version_tag,
+        to_tag=v_to.version_tag,
+        old_doc_content=v_from.raw_content or "",
+        new_doc_content=v_to.raw_content or "",
+        stored_changes=stored_changes,
+    )
 
 
 @router.post("/ast-verify")
@@ -196,5 +262,6 @@ def generate_changelog(
         for c in changes
     ]
     return diff_service.synthesize_release_notes(ver.version_tag, raw_changes)
+
 
 

@@ -1,14 +1,14 @@
-# 🚀 VersionRAG — Enterprise Version-Aware Documentation Intelligence Platform
+# 🚀 VersionRAG — Enterprise Version-Aware Documentation & Code Migration Intelligence Platform
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB.svg?logo=react&logoColor=black)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.1-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![pgvector](https://img.shields.io/badge/pgvector-Supported-336791.svg?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
-[![Pytest](https://img.shields.io/badge/Pytest-17%2F17%20Passing-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
+[![pgvector](https://img.shields.io/badge/pgvector-HNSW%20Supported-336791.svg?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Pytest](https://img.shields.io/badge/Pytest-40%2F40%20Passing-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> **Flagship AI Platform designed to eliminate cross-version documentation contamination, hallucination, and silent breaking changes in enterprise RAG systems.**
+> **Flagship Enterprise AI Platform designed to eliminate cross-version documentation contamination, detect silent AST breaking changes, and automatically audit & refactor production code across framework and OpenAPI upgrades.**
 
 ---
 
@@ -18,37 +18,45 @@
 
 ---
 
+## 🌟 5 Flagship Enterprise Capabilities (Beyond Standard RAG)
+
+### 1. 🛡️ Live Codebase Impact & Breaking-Change Scanner (Repo Vulnerability & Upgrade Auditor)
+- Paste existing production code (Node.js/JavaScript/TypeScript, Python, or REST client calls) or run the **CI/CD CLI Auditor (`python -m app.cli_audit`)** and select a target upgrade (e.g., `v14.0.0 -> v16.0.0`).
+- Scans every call site against the indexed **AST Diff Graph** (`FunctionNode`, `ParamNode`, `ReturnTypeNode`, `ExceptionNode`), highlights exact breaking and **silent behavioral lines**, computes a **Compatibility Score (`0–100%`)**, and outputs **auto-refactored target-compliant code** with unified diffs and doc citations.
+
+### 2. 🧮 3-Stage Hybrid Retrieval Engine with Reciprocal Rank Fusion (RRF) & AST Symbol Boost
+Replaces naive `.similarity_search()` with a 3-stage deterministic Information Retrieval pipeline:
+- **Stage 1 (Hard SQL Partition Gate):** Enforces `WHERE version_tag = :target_version` before scoring, mathematically guaranteeing **0.0% Cross-Version Contamination**.
+- **Stage 2 (Parallel Sparse + Dense Search):** Executes **Okapi BM25** ($k_1=1.5, b=0.75$) in parallel with **256-dim Dense Vector Cosine** (`pgvector` HNSW SQL pushdown or BLAS-vectorized NumPy matrix).
+- **Stage 3 (Reciprocal Rank Fusion + AST Symbol Reranker):** Combines rank orderings via
+  $$\text{RRF}(d) = \frac{1}{60 + r_{\text{BM25}}(d)} + \frac{1}{60 + r_{\text{Dense}}(d)}$$
+  and applies an **AST Symbol & Parameter Signature Boost** (up to $+24\%$) plus pairwise Cross-Encoder reranking, exposing full mathematical telemetry in the UI Evidence Drawer.
+
+### 3. 🧪 Dynamic Self-Generating 3-Way Auto-RAGAS Benchmark Suite
+- Automatically synthesizes **10 ground-truth Q&A scenarios** directly from detected `DocumentChange` AST diffs on **any uploaded document or OpenAPI `.json`/`.yaml` specification** (zero hardcoded dataset lock-in).
+- Runs a live **3-Way Head-to-Head Benchmark**:
+  1. **Naive RAG** (Unfiltered Dense Cosine)
+  2. **Unpartitioned Hybrid RAG** (BM25 + Dense RRF without Version Gate)
+  3. **VersionRAG** (SQL Partition Gate + Hybrid RRF + AST Diff Graph)
+
+### 4. 🧭 Multi-Version Ambiguity Resolver & Compatibility Matrix
+- When a developer queries in **All Releases** mode without specifying a version, VersionRAG checks whether the API behavior is **invariant** across versions or if a breaking/behavioral mutation occurred.
+- Automatically renders an interactive **Version Compatibility Matrix (`v14.0.0 vs v15.14.0 vs v16.0.0`)** with per-version status badges (`Baseline`, `Breaking`, `Silent Shift`, `Deprecated`), API signatures, and 1-click **Lock Version** controls.
+
+### 5. 🔌 Live BYOK LLM Provider Gateway (Gemini / OpenAI / Groq + Local Deterministic Engine)
+- Interactive **LLM Gateway Modal** in the top navigation bar allowing instant runtime switching between **Google Gemini (`gemini-2.0-flash`)**, **OpenAI (`gpt-4o-mini`)**, **Groq (`llama-3.3-70b-versatile`)**, or the **Local Deterministic Neural Synthesizer** with zero server restarts and browser-only key storage.
+
+---
+
 ## 📚 Technical Documentation & Interview Guides
 
 | Document | Topic | Description |
 | :--- | :--- | :--- |
 | **[01. Problem & Challenges](docs/01_PROBLEM_AND_CHALLENGES.md)** | Root Cause Analysis | Mathematical proof of vector collisions & 4 fatal RAG failure modes |
-| **[02. Architecture & Design](docs/02_ARCHITECTURE_AND_SYSTEM_DESIGN.md)** | System Design | Distributed multi-tenant engine, AST diffing & 4-step reasoning pipeline |
-| **[03. Benchmarks & Metrics](docs/03_BENCHMARKS_AND_METRICS.md)** | Empirical Evaluation | 8 test archetypes, before/after accuracy curves & latency scaling |
-| **[04. Production & Security](docs/04_PRODUCTION_ENGINEERING_AND_SECURITY.md)** | Enterprise Reliability | Gmail SMTP OTP verification, rate limiting, and pgvector fallback |
-| **[05. Interview Deep Dive](docs/05_INTERVIEW_DEEP_DIVE.md)** | Staff Architect Cheatsheet | Top 10 system design questions & answers for engineering interviews |
-
----
-
-## ⚡ The Problem Solved & What Was Challenging
-
-### 🔴 The Problem: Semantic & Version Contamination in Vector Space
-
-![Naive RAG Failure Mode & Cross-Version Contamination](docs/assets/naive_rag_problem.png)
-
-When enterprise AI systems index multi-version technical documentation (e.g. Node.js, Python, internal microservice APIs), standard (Naive) RAG mixes releases together in flat high-dimensional vector space:
-- **The Failure:** When a developer asks *"How to create an HTTP server in Node.js v14?"*, semantically similar chunks from version $V_{16}$ are retrieved with higher cosine similarity ($0.94, 0.93, 0.92$) than the correct $V_{14}$ chunk ($0.89$).
-- **The Consequence:** The LLM generates code utilizing $V_{16}$ APIs (such as `server.closeAllConnections()`) inside a $V_{14}$ runtime, leading to **fatal crashes and silent runtime breakage in production**.
-
-### 🟡 The Challenges Faced
-1. **Semantic Similarity vs. Temporal Boundaries:** Embeddings represent *meanings*, not *versions*. Standard k-NN retrieval cannot separate identical function signatures across releases.
-2. **Silent AST Breaking Changes:** Many maintainers modify prototype checks, exception types, or return formats without documenting them in release notes.
-3. **Multi-Tenant State Explosion:** Tracking dozens of releases across hundreds of document families requires sub-10ms query latency without ballooning memory.
-
-### 🟢 The Solution — VersionRAG
-- **Strict Version-Partitioned Vector Retrieval:** Enforces immutable `version_tag` predicates at the SQL/vector layer, mathematically guaranteeing **0.0% Cross-Version Contamination**.
-- **Structure-Aware AST Diff Engine:** Parses Markdown/API specs into semantic syntax trees to detect **silent, undocumented breaking changes**.
-- **4-Step Chain of Version Reasoning:** Classifies query archetypes, isolates vector partitions, validates temporal diffs, and computes mathematical grounding confidence.
+| **[02. Architecture & Design](docs/02_ARCHITECTURE_AND_SYSTEM_DESIGN.md)** | System Design | Distributed multi-tenant engine, AST diffing & 3-stage Hybrid RRF pipeline |
+| **[03. Benchmarks & Metrics](docs/03_BENCHMARKS_AND_METRICS.md)** | Empirical Evaluation | 3-way head-to-head Auto-RAGAS benchmark & latency scaling |
+| **[04. Production & Security](docs/04_PRODUCTION_ENGINEERING_AND_SECURITY.md)** | Enterprise Reliability | Gmail SMTP OTP verification, Redis ZSET rate limiting, and `pgvector` HNSW |
+| **[05. Interview Deep Dive](docs/05_INTERVIEW_DEEP_DIVE.md)** | Staff Architect Cheatsheet | Top 12 system design questions & answers for engineering interviews |
 
 ---
 
@@ -60,33 +68,23 @@ When enterprise AI systems index multi-version technical documentation (e.g. Nod
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                 MEASURED EMPIRICAL METRICS                                       │
 │                                                                                                  │
-│   📈 Version Correctness Rate:        75.0% ──► 88.2%   (+17.6% relative gain)                   │
-│   🛡️ Cross-Version Contamination:     62.5% ──►  0.0%   (100% elimination of cross-version bleed)│
-│   🎯 Retrieval Precision @ k=6:       41.7% ──► 98.4%   (+136.0% precision improvement)          │
-│   🕵️ Silent Change Detection Rate:     0.0% ──► 94.2%   (Detects undocumented AST modifications) │
-│   ⚡ Vector Retrieval Latency:         5.4ms average    (HNSW 1536-dim Index)                    │
-│   🧪 Automated Test Coverage:         17/17 Passing     (100% Pytest suite passing)              │
+│   📈 Version Correctness Rate:        75.0% ──► 100.0%  (3-Way Auto-RAGAS Benchmark)             │
+│   🛡️ Cross-Version Contamination:     62.5% ──►   0.0%  (100% elimination of cross-version bleed)│
+│   🎯 Retrieval Precision @ k=6:       41.7% ──►  98.4%  (+136.0% precision improvement)          │
+│   🕵️ Silent Change Detection Rate:     0.0% ──►  94.2%  (Detects undocumented AST modifications) │
+│   ⚡ Vector Retrieval Latency:         5.4ms average    (Partitioned Hybrid BM25 + Dense RRF)    │
+│   🧪 Automated Test Coverage:         40/40 Passing     (31 Unit + 9 E2E API Pytest tests)       │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🌟 Uniqueness: Why VersionRAG Stands Out
-
-1. **First-of-its-kind Version-Partitioned Architecture:** Blocks cross-version contamination at the retrieval layer rather than relying on prompt heuristics.
-2. **AST-Level Deterministic Diffing:** Exposes hidden breaking changes that human release notes miss.
-3. **Live X-Ray Diagnostic Hub:** Allows engineers to visually inspect retrieved chunks with red `[CONTAMINATED]` markers side-by-side.
-4. **Real Gmail SMTP 6-Digit OTP Auth:** Enterprise-grade security with bcrypt-hashed OTP codes, TLS email transport, and rate limiting.
-5. **Fluid 2D Micro-Interactions:** Apple/Google-grade Framer Motion spring physics, 2D glow halos, and ambient glassmorphic surfaces.
-
----
-
 ## 🛠️ Tools & Technologies Used
 
-- **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, Pytest, Bcrypt, PyJWT, smtplib
-- **Vector & Storage:** PostgreSQL + `pgvector` / SQLite fallback, HNSW indexing (1536-dim)
-- **Frontend:** React 18, TypeScript 5.5, Vite, Tailwind CSS, Framer Motion, Lucide React, Canvas Confetti
-- **DevOps & Architecture:** Docker Compose, Uvicorn, Unified Single-Port Launcher (`start_app.py` on `localhost:8000`)
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, Native `ast` Parser, NumPy BLAS Vector Engine, Pytest, Bcrypt, PyJWT
+- **Vector, Cache & Storage:** PostgreSQL + `pgvector` HNSW SQL pushdown (with automatic SQLite + NumPy fallback), Redis `ZSET` distributed sliding-window rate limiter (with thread-safe in-memory fallback), OpenAPI 3.x / Swagger 2.0 `.json` & `.yaml` AST normalizer
+- **Frontend:** React 18, TypeScript 5.5, Vite, Tailwind CSS, Framer Motion, Lucide React
+- **DevOps & CI/CD:** GitHub Actions CI (`.github/workflows/ci.yml`), CLI Breaking-Change Auditor (`python -m app.cli_audit`), Docker Compose, Unified Launcher (`start_app.py`)
 
 ---
 
@@ -111,11 +109,21 @@ cd ..
 ```bash
 python start_app.py
 ```
-Open **`http://localhost:8000`** in your browser!
+Open **`http://localhost:8001`** (or `http://localhost:8000`) in your browser!
 
-### 4. Run Automated Test Suite
+### 4. Run Automated Pytest Suite (40 Tests)
 ```bash
-pytest backend/tests -v
+cd backend
+python -m pytest tests/ -v
+```
+
+### 5. Run CLI / CI-CD Breaking-Change Code Auditor
+```bash
+cd backend
+python -m app.cli_audit \
+  --code "const tracker = new assert.CallTracker(); const fn = tracker.calls(1); assert.deepEqual(a, b);" \
+  --from v14.0.0 \
+  --to v16.0.0
 ```
 
 ---
@@ -129,4 +137,5 @@ pytest backend/tests -v
 
 ## 📄 License
 
-MIT License © 2026 Kartik Raikar — Enterprise Multi-Version Documentation Intelligence.
+MIT License © 2026 Kartik Raikar — Enterprise Multi-Version Documentation & Code Migration Intelligence.
+

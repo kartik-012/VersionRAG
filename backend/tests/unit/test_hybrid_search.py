@@ -204,6 +204,9 @@ def test_reciprocal_rank_fusion_and_telemetry():
     assert telemetry["bm25_rank"] == 1
     assert telemetry["cross_encoder_score"] > 0.0
     assert 0.0 < telemetry["rrf_score"] <= 1.0
+    assert telemetry["raw_rrf_score"] > 0.0
+    assert "1/(60+" in telemetry["rrf_formula"]
+    assert telemetry["ast_symbol_matched"] is not None
 
 
 def test_partitioned_index_cache_and_invalidation():
@@ -219,3 +222,12 @@ def test_partitioned_index_cache_and_invalidation():
     idx_rebuilt = manager.get_or_build("proj-1", "VER:v14.0.0", [c1, c2])
     assert idx_rebuilt is not idx_first
     assert len(idx_rebuilt.chunks) == 2
+
+    # Verify PostgreSQL pgvector HNSW DDL and automatic SQLite fallback hook
+    ddl = PartitionedIndexManager.get_pgvector_hnsw_ddl(embedding_dim=256)
+    assert "CREATE EXTENSION IF NOT EXISTS vector" in ddl
+    assert "USING hnsw (embedding_vec vector_cosine_ops)" in ddl
+    assert PartitionedIndexManager.query_pgvector_hnsw_candidates(
+        db=None, project_id="proj-1", query_vector=[0.1] * 256, version_tag="v14.0.0"
+    ) is None
+

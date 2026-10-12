@@ -108,7 +108,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
         <h3 className="text-base font-semibold text-white mb-1">Upload Document Version</h3>
         <p className="text-xs text-gray-400 mb-5">
-          Supported formats: PDF, Markdown, TXT, HTML, DOCX (up to 50MB).
+          Supported formats: PDF, Markdown, OpenAPI JSON/YAML, TXT, HTML, DOCX (up to 50MB).
         </p>
 
         {/* Drop Zone */}
@@ -124,15 +124,15 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 id="file-upload-input"
                 type="file"
                 className="hidden"
-                accept=".pdf,.md,.markdown,.txt,.html,.docx"
+                accept=".pdf,.md,.markdown,.txt,.json,.yaml,.yml,.html,.docx"
                 onChange={(e) => e.target.files && setFile(e.target.files[0])}
               />
               <UploadCloud className="w-10 h-10 text-primary-light mx-auto mb-3" />
               <p className="text-sm font-medium text-gray-200">
-                {file ? file.name : 'Click to select or drag & drop document file'}
+                {file ? file.name : 'Click to select or drag & drop document or OpenAPI spec'}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {file ? `${(file.size / 1024).toFixed(1)} KB` : 'PDF, Markdown, TXT, HTML, DOCX'}
+                {file ? `${(file.size / 1024).toFixed(1)} KB` : 'PDF, Markdown, OpenAPI (.json, .yaml), TXT, HTML, DOCX'}
               </p>
             </div>
 

@@ -237,3 +237,94 @@ def test_non_breaking_optional_parameter_extension_proof():
     assert diff.ast_diff_type == "PARAMETER_EXTENDED"
     assert "includeHistogram" in diff.proof_summary
 
+
+def test_live_codebase_impact_scanner_and_auto_refactor():
+    """
+    Verifies Feature 1: Live Codebase Impact & Breaking-Change Scanner (Repo Vulnerability & Upgrade Auditor).
+    Scans production code against the AST Diff Graph between v14.0.0 and v15.14.0, pinpoints exact
+    1-indexed vulnerable lines (including silent breaking changes), and auto-refactors the code.
+    """
+    from app.services.code_scanner_service import code_scanner_service
+
+    sample_v14_doc = """# Node.js Assert v14.0.0
+## assert.CallTracker
+`new assert.CallTracker()` tracks whether functions are called a specific number of times.
+### tracker.calls([fn][, exact])
+Wraps a callback function. `fn` is optional in v14.0.0.
+## assert.deepEqual(actual, expected[, message])
+Tests for deep equality between `actual` and `expected` using `==` comparison. Does not compare object prototypes.
+"""
+    sample_v15_doc = """# Node.js Assert v15.14.0
+## Changelog
+- **[Deprecated]**: `assert.CallTracker` is deprecated and will be replaced by `node:test` mock API.
+- **[Breaking]**: `tracker.calls(fn[, exact])` now requires `fn` parameter; calling `tracker.calls(1)` throws `ERR_INVALID_ARG_TYPE`.
+## assert.CallTracker
+Deprecated: Use `node:test` `mock.fn()` instead.
+### tracker.calls(fn[, exact])
+`fn` is now a required function parameter. Throws `ERR_INVALID_ARG_TYPE` if omitted.
+## assert.deepEqual(actual, expected[, message])
+Tests for deep equality between `actual` and `expected` using `===` strict prototype and own enumerable Symbol comparison.
+"""
+
+    changes, _ = diff_service.compute_all_changes(
+        old_content=sample_v14_doc,
+        new_content=sample_v15_doc,
+        from_tag="v14.0.0",
+        to_tag="v15.14.0",
+    )
+
+    production_code = """const assert = require('assert');
+const tracker = new assert.CallTracker();
+const stub = tracker.calls(1);
+assert.deepEqual(actualPayload, expectedPayload);
+"""
+    scan_res = code_scanner_service.scan_code_snippet(
+        code_snippet=production_code,
+        from_tag="v14.0.0",
+        to_tag="v15.14.0",
+        old_doc_content=sample_v14_doc,
+        new_doc_content=sample_v15_doc,
+        stored_changes=changes,
+    )
+
+    assert scan_res["risk_level"] in ("CRITICAL", "HIGH")
+    assert scan_res["compatibility_score"] < 80
+    assert scan_res["summary_counts"]["vulnerable_lines"] >= 2
+    assert scan_res["summary_counts"]["silent_lines"] >= 1
+
+    # Verify exact line numbers and auto-refactored output
+    finding_lines = {f["line_number"]: f for f in scan_res["line_findings"]}
+    assert 4 in finding_lines  # assert.deepEqual line
+    assert finding_lines[4]["is_silent"] is True
+    assert "assert.deepStrictEqual(" in scan_res["refactored_code"]
+    assert "node:test" in scan_res["refactored_code"] or "calls(() => {}, 1)" in scan_res["refactored_code"]
+    assert "--- production_snippet (v14.0.0)" in scan_res["unified_diff"]
+    assert "+++ refactored_snippet (v15.14.0)" in scan_res["unified_diff"]
+
+
+def test_cli_audit_runner_exit_codes_and_output(capsys):
+    from app.cli_audit import main as cli_main
+
+    # 1. Vulnerable code snippet should return exit code 1 for CI gate blocking
+    vuln_code = "const tracker = new assert.CallTracker();\nconst fn = tracker.calls(1);\nassert.deepEqual(a, b);"
+    exit_code_fail = cli_main(["--code", vuln_code, "--from", "v14.0.0", "--to", "v16.0.0"])
+    captured = capsys.readouterr()
+    assert exit_code_fail == 1
+    assert "VersionRAG CI/CD Breaking-Change & Upgrade Auditor" in captured.out
+    assert "Auto-Refactored Unified Diff" in captured.out
+
+    # 2. Advisory mode (--no-fail) should return exit code 0 even with findings
+    exit_code_advisory = cli_main(["--code", vuln_code, "--from", "v14.0.0", "--to", "v16.0.0", "--no-fail"])
+    capsys.readouterr()
+    assert exit_code_advisory == 0
+
+    # 3. Clean compliant v16 code should return exit code 0
+    clean_code = "const assert = require('node:assert/strict');\nassert.deepStrictEqual(actual, expected);"
+    exit_code_clean = cli_main(["--code", clean_code, "--from", "v14.0.0", "--to", "v16.0.0"])
+    captured_clean = capsys.readouterr()
+    assert exit_code_clean == 0
+    assert "[PASS] Zero breaking or silent behavioral vulnerabilities detected." in captured_clean.out
+
+
+
+

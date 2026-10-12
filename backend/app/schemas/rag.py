@@ -13,6 +13,7 @@ class CitationRead(BaseModel):
     snippet: str
     similarity_score: float = 0.0
     citation_order: int = 1
+    retrieval_telemetry: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,6 +69,8 @@ class QueryResponse(BaseModel):
     confidence_reason: str
     has_conflict: bool
     conflict_summary: Optional[str] = None
+    compatibility_matrix: List[Dict[str, Any]] = []
+    is_invariant: bool = True
     citations: List[CitationRead] = []
     latency_ms: int
     tokens_used: int

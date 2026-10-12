@@ -89,8 +89,10 @@ def _persist_query_exchange(
         created_cit_objs.append(cit_obj)
 
     db.flush()
-    for cit_obj in created_cit_objs:
-        citations_resp.append(CitationRead.model_validate(cit_obj))
+    for cit_obj, raw_cit in zip(created_cit_objs, result["citations"]):
+        cit_read = CitationRead.model_validate(cit_obj)
+        cit_read.retrieval_telemetry = raw_cit.get("retrieval_telemetry")
+        citations_resp.append(cit_read)
 
     db.commit()
 
@@ -107,6 +109,8 @@ def _persist_query_exchange(
         confidence_reason=result["confidence_reason"],
         has_conflict=result["has_conflict"],
         conflict_summary=result["conflict_summary"],
+        compatibility_matrix=result.get("compatibility_matrix", []),
+        is_invariant=result.get("is_invariant", True),
         citations=citations_resp,
         latency_ms=result["latency_ms"],
         tokens_used=result["tokens_used"]
@@ -161,7 +165,10 @@ def stream_version_aware_query(
 
         # Stage 1: Query Classification & Version Lock
         archetype, detected_target_v, detected_compare_v = rag_service.classify_query(req.question)
-        final_target_v = req.target_version or detected_target_v
+        if req.scope == "all" and not detected_target_v:
+            final_target_v = None
+        else:
+            final_target_v = req.target_version or detected_target_v
         final_compare_v = req.compare_to_version or detected_compare_v
 
         yield f"data: {json.dumps({'type': 'stage', 'stage': 1, 'title': 'Query Classification & Version Lock', 'detail': f'Routed to {archetype.value} | Target Version: {final_target_v or req.scope}', 'query_type': archetype.value, 'target_version': final_target_v})}\n\n"
@@ -193,13 +200,24 @@ def stream_version_aware_query(
         )
         yield f"data: {json.dumps({'type': 'stage', 'stage': 2, 'title': 'Hybrid BM25 + Dense BLAS RRF Retrieval', 'detail': f'Retrieved {len(candidates)} candidate chunks across partitions {related_versions}', 'candidate_count': len(candidates), 'related_versions': related_versions})}\n\n"
 
-        # Stage 3: Cross-Encoder Reranking & Temporal AST Diff Verification
+        # Stage 3: Cross-Encoder Reranking & Multi-Version Ambiguity Resolution
         conf_level, conf_score, conf_reason = rag_service.calculate_confidence(
             candidates, final_target_v, archetype
         )
         has_conflict, conflict_summary = rag_service.detect_conflicts(
             candidates, db, req.project_id
         )
+        compatibility_matrix, is_invariant, ambiguity_note = rag_service.resolve_multi_version_ambiguity(
+            db=db,
+            project_id=req.project_id,
+            question=req.question,
+            candidates=candidates,
+            target_version=final_target_v,
+            scope=req.scope,
+        )
+        if not is_invariant and ambiguity_note and not has_conflict:
+            has_conflict = True
+            conflict_summary = ambiguity_note
 
         yield f"data: {json.dumps({'type': 'stage', 'stage': 3, 'title': 'Cross-Encoder Reranking & Temporal Diff Check', 'detail': f'Confidence: {round(conf_score * 100)}% ({conf_level.value}) | Conflict: {bool(has_conflict)}', 'confidence_score': conf_score, 'confidence_level': conf_level.value, 'has_conflict': has_conflict})}\n\n"
 
@@ -215,7 +233,7 @@ def stream_version_aware_query(
             conf_reason = "No matching documentation chunks found for this query in the active project."
         else:
             answer = rag_service._generate_grounded_answer(
-                req.question, archetype, final_target_v, candidates, conflict_summary
+                req.question, archetype, final_target_v, candidates, conflict_summary, compatibility_matrix, is_invariant
             )
 
         yield f"data: {json.dumps({'type': 'stage', 'stage': 4, 'title': 'Grounded Token Synthesis', 'detail': 'Streaming citation-backed response tokens...'})}\n\n"
@@ -232,6 +250,11 @@ def stream_version_aware_query(
         citations = []
         for i, (ch, score) in enumerate(candidates[:4]):
             doc_title = ch.version.document.title if ch.version and ch.version.document else "Documentation"
+            telemetry = (
+                ch.chunk_metadata.get("retrieval_telemetry")
+                if isinstance(ch.chunk_metadata, dict)
+                else None
+            )
             citations.append({
                 "chunk_id": ch.id,
                 "document_title": doc_title,
@@ -240,7 +263,8 @@ def stream_version_aware_query(
                 "page_number": ch.page_number,
                 "snippet": ch.content[:300] + ("..." if len(ch.content) > 300 else ""),
                 "similarity_score": round(score, 3),
-                "citation_order": i + 1
+                "citation_order": i + 1,
+                "retrieval_telemetry": telemetry,
             })
 
         result_dict = {
@@ -253,6 +277,8 @@ def stream_version_aware_query(
             "confidence_reason": conf_reason,
             "has_conflict": has_conflict,
             "conflict_summary": conflict_summary,
+            "compatibility_matrix": compatibility_matrix,
+            "is_invariant": is_invariant,
             "citations": citations,
             "latency_ms": latency_ms,
             "tokens_used": max(25, len(answer) // 4 + sum(len(c["snippet"]) // 4 for c in citations)),

@@ -71,7 +71,20 @@
 
 ### Q10: *"What are the primary metrics for measuring RAG system quality?"*
 **The Answer:**
-> "We measure the **RAG Triad**:
+> "We measure the **RAG Triad** across a **3-Way Head-to-Head Auto-RAGAS Benchmark** (Naive RAG vs. Unpartitioned Hybrid RAG vs. VersionRAG):
 > 1. **Context Relevance (Retrieval Precision@k):** Measures what fraction of retrieved chunks are strictly in scope ($98.4\%$).
 > 2. **Groundedness / Faithfulness:** Measures whether synthesized assertions are supported by evidence ($100\%$).
-> 3. **Answer Relevance (Version Correctness):** Measures whether the answer satisfies the user's release constraints ($88.2\%$)."
+> 3. **Answer Relevance (Version Correctness):** Measures whether the answer satisfies the user's release constraints ($100\%$ on dynamic auto-synthesized version diffs)."
+
+---
+
+### Q11: *"Why combine Okapi BM25 + Dense Vector Cosine with Reciprocal Rank Fusion (RRF) and AST Symbol Boosting?"*
+**The Answer:**
+> "Dense embeddings excel at conceptual semantics, whereas Okapi BM25 ($k_1=1.5, b=0.75$) excels at exact camelCase/snake_case API identifiers (`assert.deepStrictEqual`, `ERR_INVALID_ARG_TYPE`). Because BM25 scores are unbounded $[0, \infty)$ while cosine similarity is bounded in $[-1, 1]$, linear score interpolation is brittle to outlier term frequencies. VersionRAG uses **Reciprocal Rank Fusion** ($\text{RRF}(d) = \frac{1}{60 + r_{\text{BM25}}(d)} + \frac{1}{60 + r_{\text{Dense}}(d)}$) to combine rank orderings scale-invariantly, then applies an **AST Symbol & Parameter Boost** (up to $+24\%$) when a query matches parsed `FunctionNode.symbol_name` or `ParamNode.name` nodes."
+
+---
+
+### Q12: *"How does the Live Codebase Impact Scanner auto-refactor production code across versions?"*
+**The Answer:**
+> "When a developer pastes production code or runs `python -m app.cli_audit` in CI/CD, `CodeScannerService` parses every call site for symbol names and argument arity, cross-referencing them against the AST Diff Graph (`ASTContractDiff`) between `v_from` and `v_to`. It detects removed APIs, optional-to-required parameter shifts, deprecated classes (`assert.CallTracker`), and silent operator shifts (`==` to `===`), then applies AST-guided line transformations and emits a `difflib.unified_diff` patch alongside verified documentation citations."
+

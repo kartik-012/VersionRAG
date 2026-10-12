@@ -122,6 +122,21 @@ export interface Citation {
   snippet: string;
   similarity_score: number;
   citation_order: number;
+  retrieval_telemetry?: {
+    engine?: string;
+    partition_gate?: string;
+    dense_score?: number;
+    bm25_score?: number;
+    rrf_score?: number;
+    raw_rrf_score?: number;
+    rrf_formula?: string;
+    cross_encoder_score?: number;
+    dense_rank?: number;
+    bm25_rank?: number;
+    symbol_boost?: number;
+    ast_symbol_matched?: string | null;
+    final_score?: number;
+  } | null;
 }
 
 export interface QueryResponse {
@@ -137,6 +152,15 @@ export interface QueryResponse {
   confidence_reason: string;
   has_conflict: boolean;
   conflict_summary?: string;
+  compatibility_matrix?: Array<{
+    version_tag: string;
+    symbol: string;
+    status: string;
+    is_breaking: boolean;
+    is_silent: boolean;
+    behavior_summary: string;
+  }>;
+  is_invariant?: boolean;
   citations: Citation[];
   latency_ms: number;
   tokens_used: number;

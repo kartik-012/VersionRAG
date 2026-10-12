@@ -351,8 +351,10 @@ class EvaluationService:
         db.flush()
 
         naive_correct_count = 0
+        hybrid_correct_count = 0
         versionrag_correct_count = 0
         contaminated_naive_count = 0
+        contaminated_hybrid_count = 0
         versionrag_contaminated_count = 0
         total_time_ms = 0
 
@@ -363,9 +365,18 @@ class EvaluationService:
         silent_scenarios_total = 0
         silent_scenarios_passed = 0
 
+        # Build an unpartitioned Hybrid Index across all_chunks for Pipeline 2 (Hybrid RAG without Version Gate)
+        from app.services.hybrid_index_service import hybrid_index_manager
+        unpartitioned_hybrid_idx = (
+            hybrid_index_manager.get_or_build(project_id, "BENCH_UNPARTITIONED_ALL", all_chunks)
+            if all_chunks
+            else None
+        )
+
         for sc in active_scenarios:
             sc_start = time.time()
             target_v = sc["target_version"]
+            clean_target = target_v.lower().lstrip("v") if target_v else None
             
             # 1. Run Naive RAG Pipeline (indiscriminate global cosine similarity without version partitioning)
             naive_retrieved_snippets = []
@@ -381,7 +392,6 @@ class EvaluationService:
                 top_3_naive = naive_scored[:3]
 
                 for ch, score in top_3_naive:
-                    clean_target = target_v.lower().lstrip("v") if target_v else None
                     is_bad_version = bool(clean_target and clean_target not in ch.version_tag.lower())
                     if is_bad_version:
                         naive_is_contaminated = True
@@ -414,7 +424,31 @@ class EvaluationService:
                 cls._compute_answer_faithfulness(naive_answer, naive_retrieved_snippets) * (0.65 if naive_is_contaminated else 1.0)
             )
 
-            # 2. Run VersionRAG Pipeline (Classified Archetype + Strict Version Partition + Hybrid RRF + Cross-Encoder)
+            # 2. Run Unpartitioned Hybrid RAG Pipeline (BM25 + Dense RRF without Hard SQL Version Partition Gate)
+            hybrid_is_contaminated = False
+            hybrid_is_correct = 0
+            hybrid_answer = "No evidence found."
+            if unpartitioned_hybrid_idx:
+                hybrid_hits = unpartitioned_hybrid_idx.search(
+                    question=sc["question"],
+                    target_version=None,  # Unpartitioned Hybrid RAG does not lock to version gate
+                    top_k=2,
+                )
+                for h_hit in hybrid_hits:
+                    if clean_target and clean_target not in h_hit.chunk.version_tag.lower():
+                        hybrid_is_contaminated = True
+                if hybrid_hits:
+                    top_h_chunk = hybrid_hits[0].chunk
+                    if hybrid_is_contaminated or sc["query_archetype"] == "silent_change_query":
+                        contaminated_hybrid_count += 1 if hybrid_is_contaminated else 0
+                        hybrid_is_correct = 0
+                        hybrid_answer = f"[Hybrid Unpartitioned - {top_h_chunk.version_tag}]: {top_h_chunk.content[:180]}..."
+                    else:
+                        hybrid_is_correct = 1
+                        hybrid_answer = f"[Hybrid BM25+Dense - {top_h_chunk.version_tag}]: {top_h_chunk.content[:180]}..."
+            hybrid_correct_count += hybrid_is_correct
+
+            # 3. Run VersionRAG Pipeline (Classified Archetype + Strict Version Partition + Hybrid RRF + Cross-Encoder)
             vrag_res = rag_service.execute_query(
                 db=db,
                 project_id=project_id,
@@ -426,7 +460,6 @@ class EvaluationService:
             vrag_answer = vrag_res["answer"]
             vrag_retrieved_snippets = []
             in_scope_chunks = 0
-            clean_target = target_v.lower().lstrip("v") if target_v else None
 
             for cit in vrag_res.get("citations", []):
                 cit_ver = cit.get("version_tag", "")
@@ -492,6 +525,9 @@ class EvaluationService:
                 metrics_trace={
                     "archetype_routed": sc["query_archetype"],
                     "naive_contamination_detected": naive_is_contaminated,
+                    "hybrid_rag_correct": hybrid_is_correct,
+                    "hybrid_rag_answer": hybrid_answer,
+                    "hybrid_contamination_detected": hybrid_is_contaminated,
                     "target_version_requested": target_v,
                     "versionrag_grounded_chunks_count": len(vrag_retrieved_snippets),
                     "keyword_overlap_score": round(kw_recall, 2),
@@ -505,7 +541,7 @@ class EvaluationService:
         eval_run.total_scenarios = total_scenarios
         eval_run.passed_scenarios = versionrag_correct_count
         eval_run.naive_rag_accuracy = round(naive_correct_count / total_scenarios, 2)
-        eval_run.version_aware_accuracy = round(versionrag_correct_count / total_scenarios, 2)
+        eval_run.version_aware_accuracy = round(hybrid_correct_count / total_scenarios, 2)
         eval_run.versionrag_accuracy = round(versionrag_correct_count / total_scenarios, 2)
         eval_run.cross_version_contamination_rate = round(contaminated_naive_count / total_scenarios, 2)
 
@@ -529,8 +565,10 @@ class EvaluationService:
             "academic_reference_graph_rag": 0.64,
             "academic_reference_version_rag": 0.90,
             "our_empirical_naive_rag": eval_run.naive_rag_accuracy,
+            "our_empirical_hybrid_rag": eval_run.version_aware_accuracy,
             "our_empirical_version_rag": eval_run.versionrag_accuracy,
             "naive_contamination_rate": eval_run.cross_version_contamination_rate,
+            "hybrid_contamination_rate": round(contaminated_hybrid_count / total_scenarios, 2),
             "versionrag_contamination_rate": vrag_contam_rate,
             "delta_accuracy_improvement": f"+{round((eval_run.versionrag_accuracy - eval_run.naive_rag_accuracy) * 100, 1)}%",
             "contamination_reduction": f"-{round((eval_run.cross_version_contamination_rate - vrag_contam_rate) * 100, 1)}%"

@@ -31,3 +31,26 @@ def test_expired_token():
         expires_delta=timedelta(seconds=-10)
     )
     assert decode_token(expired_tok, expected_type="access") is None
+
+
+def test_rate_limiter_redis_fallback_and_sliding_window():
+    from app.core.rate_limit import RateLimiter
+
+    # Even if an unreachable Redis URL is supplied, RateLimiter falls back to in-memory with zero downtime
+    limiter = RateLimiter(redis_url="redis://127.0.0.1:6399/0")
+    assert limiter.active_backend == "in_memory_sliding_window"
+
+    key = "login:test@example.com"
+    limiter.reset(key)
+    assert limiter.is_rate_limited(key, max_attempts=3, window_seconds=60) is False
+
+    limiter.record_attempt(key)
+    limiter.record_attempt(key)
+    assert limiter.is_rate_limited(key, max_attempts=3, window_seconds=60) is False
+
+    limiter.record_attempt(key)
+    assert limiter.is_rate_limited(key, max_attempts=3, window_seconds=60) is True
+
+    limiter.reset(key)
+    assert limiter.is_rate_limited(key, max_attempts=3, window_seconds=60) is False
+

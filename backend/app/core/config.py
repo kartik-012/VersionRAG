@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     # Storage
     STORAGE_LOCAL_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "storage_data")
     MAX_UPLOAD_SIZE_MB: int = 50
-    ALLOWED_EXTENSIONS: List[str] = ["pdf", "md", "markdown", "txt", "html", "htm", "docx", "json"]
+    ALLOWED_EXTENSIONS: List[str] = ["pdf", "md", "markdown", "txt", "html", "htm", "docx", "json", "yaml", "yml"]
+
 
     # AI / LLM Providers
     OPENAI_API_KEY: Optional[str] = None
