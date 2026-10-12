@@ -3,6 +3,7 @@ Production-grade email service with real Gmail SMTP support.
 Sends professional HTML verification and password reset emails.
 Falls back to console logging when SMTP is not configured.
 """
+import os
 import smtplib
 import logging
 import secrets
@@ -13,18 +14,38 @@ from app.core.config import settings
 
 logger = logging.getLogger("versionrag.email")
 
+_SYNTHETIC_TEST_DOMAINS = (
+    "@example.com",
+    "@example.org",
+    "@example.net",
+    "@corp.com",
+    "@test.com",
+    "@versionrag.dev",
+    "@localhost",
+    ".invalid",
+    ".test",
+)
+
 
 class EmailService:
     """
     Production email service supporting Gmail SMTP with TLS.
-    When SMTP_USER and SMTP_PASSWORD are not set, gracefully falls back
-    to logging (development mode).
+    When SMTP_USER and SMTP_PASSWORD are not set (or when running automated tests),
+    gracefully falls back to logging without triggering external SMTP bounces.
     """
 
     @property
     def is_configured(self) -> bool:
         """Check if real SMTP sending is available."""
         return bool(settings.SMTP_USER and settings.SMTP_PASSWORD)
+
+    @staticmethod
+    def _is_test_or_synthetic_recipient(to_email: str) -> bool:
+        """Returns True if running inside pytest or targeting a synthetic test domain."""
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return True
+        lower_addr = (to_email or "").strip().lower()
+        return any(lower_addr.endswith(dom) for dom in _SYNTHETIC_TEST_DOMAINS)
 
     @staticmethod
     def generate_otp(length: int = 6) -> str:
@@ -36,10 +57,9 @@ class EmailService:
         Send an email via Gmail SMTP with TLS.
         Returns True on success, False on failure.
         """
-        if not self.is_configured:
+        if not self.is_configured or self._is_test_or_synthetic_recipient(to_email):
             logger.info(
-                f"[EMAIL DEV MODE] Would send to {to_email}: {subject}\n"
-                f"Plain body preview: {plain_body[:200]}..."
+                f"[EMAIL DEV/TEST MODE] Skipped external SMTP to {to_email}: {subject}"
             )
             return True
 

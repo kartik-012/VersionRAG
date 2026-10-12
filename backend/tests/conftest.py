@@ -9,10 +9,15 @@ import os
 # Ensure backend directory is in python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.core.config import settings
 from app.core.database import Base, get_db
 from app.core.rate_limit import rate_limiter
 from app.services.hybrid_index_service import hybrid_index_manager
 from app.main import app
+
+# Never send real external Gmail SMTP emails during automated pytest runs
+settings.SMTP_USER = None
+settings.SMTP_PASSWORD = None
 
 # Create in-memory SQLite database for test isolation
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -27,6 +32,8 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_
 @pytest.fixture(autouse=True)
 def clean_rate_limits():
     """Reset rate limiter and hybrid index cache before and after every test."""
+    settings.SMTP_USER = None
+    settings.SMTP_PASSWORD = None
     rate_limiter.clear_all()
     hybrid_index_manager.clear()
     yield
