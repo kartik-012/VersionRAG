@@ -34,9 +34,11 @@ def clean_rate_limits():
     """Reset rate limiter and hybrid index cache before and after every test."""
     settings.SMTP_USER = None
     settings.SMTP_PASSWORD = None
+    settings.OTP_ENABLED = False
     rate_limiter.clear_all()
     hybrid_index_manager.clear()
     yield
+    settings.OTP_ENABLED = False
     rate_limiter.clear_all()
     hybrid_index_manager.clear()
 

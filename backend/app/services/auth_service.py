@@ -117,10 +117,15 @@ class AuthService:
             )
 
         if not user.is_verified:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="EMAIL_NOT_VERIFIED"
-            )
+            if not settings.OTP_ENABLED:
+                user.is_verified = True
+                db.commit()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="EMAIL_NOT_VERIFIED"
+                )
+
 
         # Successful login — reset rate limiter
         rate_limiter.reset(rate_key)

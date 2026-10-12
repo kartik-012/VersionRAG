@@ -39,8 +39,9 @@ class EmailService:
 
     @property
     def is_configured(self) -> bool:
-        """Check if real SMTP sending is available."""
-        return bool(settings.SMTP_USER and settings.SMTP_PASSWORD)
+        """Check if real SMTP sending is available and OTP_ENABLED is True."""
+        return bool(settings.OTP_ENABLED and settings.SMTP_USER and settings.SMTP_PASSWORD)
+
 
     @staticmethod
     def _is_test_or_synthetic_recipient(to_email: str) -> bool:
