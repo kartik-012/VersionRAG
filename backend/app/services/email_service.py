@@ -4,6 +4,7 @@ Sends professional HTML verification and password reset emails.
 Falls back to console logging when SMTP is not configured.
 """
 import os
+import sys
 import smtplib
 import logging
 import secrets
@@ -19,6 +20,8 @@ _SYNTHETIC_TEST_DOMAINS = (
     "@example.org",
     "@example.net",
     "@corp.com",
+    "@company.com",
+    "@enterprise.io",
     "@test.com",
     "@versionrag.dev",
     "@localhost",
@@ -42,7 +45,7 @@ class EmailService:
     @staticmethod
     def _is_test_or_synthetic_recipient(to_email: str) -> bool:
         """Returns True if running inside pytest or targeting a synthetic test domain."""
-        if os.environ.get("PYTEST_CURRENT_TEST"):
+        if "pytest" in sys.modules or os.environ.get("PYTEST_CURRENT_TEST"):
             return True
         lower_addr = (to_email or "").strip().lower()
         return any(lower_addr.endswith(dom) for dom in _SYNTHETIC_TEST_DOMAINS)
