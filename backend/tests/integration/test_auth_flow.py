@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 from tests.utils import signup_and_login
+from app.core.config import settings
 
 def test_full_auth_lifecycle(client: TestClient):
+    settings.OTP_ENABLED = True
     # 1. Signup (now returns SignupResponse, not User)
     signup_payload = {
         "email": "developer@enterprise.io",

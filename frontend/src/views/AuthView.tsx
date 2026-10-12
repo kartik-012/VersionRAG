@@ -92,6 +92,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated }) => {
         if (res.requires_verification) {
           setStep('verify');
           setResendCooldown(60);
+        } else {
+          const loginRes = await api.login(email, password);
+          onAuthenticated(loginRes.user);
         }
       }
     } catch (err: any) {

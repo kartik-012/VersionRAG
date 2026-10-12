@@ -36,6 +36,26 @@ class AuthService:
                 detail="Unable to complete registration with the provided details."
             )
 
+        if not settings.OTP_ENABLED:
+            user = User(
+                email=user_in.email.lower(),
+                hashed_password=get_password_hash(user_in.password),
+                full_name=user_in.full_name,
+                is_active=True,
+                is_verified=True,
+                is_superuser=False,
+                verification_code=None,
+                verification_code_expires_at=None,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            return SignupResponse(
+                message="Account created and verified!",
+                requires_verification=False,
+                email=user.email,
+            )
+
         # Generate OTP
         otp_code = email_service.generate_otp(settings.OTP_LENGTH)
         otp_hash = get_password_hash(otp_code)
@@ -67,6 +87,7 @@ class AuthService:
             requires_verification=True,
             email=user.email,
         )
+
 
     @staticmethod
     def authenticate(db: Session, credentials: UserLogin, client_ip: str = "unknown") -> TokenResponse:

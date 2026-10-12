@@ -20,8 +20,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM_NAME: str = "VersionRAG Platform"
     EMAILS_FROM_EMAIL: Optional[str] = None
+    OTP_ENABLED: bool = False
     OTP_EXPIRE_MINUTES: int = 15
     OTP_LENGTH: int = 6
+
 
     # Database (Postgres with SQLite automatic fallback)
     DATABASE_URL: str = Field(
