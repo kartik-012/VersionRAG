@@ -438,11 +438,26 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthenticated }) => {
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <span>{isLogin ? 'Sign In to Workspace' : 'Create Account & Verify'}</span>
+                      <span>{isLogin ? 'Sign In to Workspace' : 'Create Account'}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </motion.button>
+
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('demo@versionrag.dev');
+                      setPassword('VersionRAG2026!');
+                      setError(null);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-surface-subtle/70 hover:bg-surface-border/60 text-gray-300 hover:text-white text-xs font-medium flex items-center justify-center gap-2 border border-surface-border transition"
+                  >
+                    <span className="text-amber-400 font-bold">⚡</span>
+                    <span>1-Click Demo Login (<code className="text-blue-400 font-mono">demo@versionrag.dev</code>)</span>
+                  </button>
+                )}
               </form>
 
               {/* Security Footer */}
