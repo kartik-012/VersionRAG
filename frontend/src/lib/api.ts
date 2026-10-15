@@ -6,6 +6,10 @@ import {
 
 const getApiBase = () => {
   if (typeof window !== 'undefined') {
+    const envApiBase = (import.meta as any).env?.VITE_API_BASE_URL;
+    if (envApiBase) {
+      return String(envApiBase).replace(/\/+$/, '');
+    }
     // If running in standalone Vite dev server (5173 or 3000), connect to FastAPI on 8001
     if (
       (window.location.port === '5173' || window.location.port === '3000') &&
@@ -18,6 +22,7 @@ const getApiBase = () => {
 };
 
 const API_BASE = getApiBase();
+
 
 class ApiClient {
   private getHeaders(): HeadersInit {
