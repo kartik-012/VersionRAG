@@ -69,7 +69,10 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium text-gray-300 hover:text-white hover:bg-surface-hover transition"
             >
               {item.icon}
-              <span>{item.label}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              <kbd className="px-1.5 py-0.5 text-[10px] bg-surface-subtle border border-surface-border rounded text-gray-400 font-mono">
+                Enter
+              </kbd>
             </button>
           ))}
           {filtered.length === 0 && (
@@ -77,9 +80,15 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ isOpen, onClose, onNav
           )}
         </div>
 
-        <div className="px-4 py-2 bg-surface-subtle border-t border-surface-border text-[11px] text-gray-500 flex justify-between">
-          <span>Navigate with arrows</span>
-          <span>Esc to close</span>
+        <div className="px-4 py-2 bg-surface-subtle border-t border-surface-border text-[11px] text-gray-400 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>Toggle with</span>
+            <kbd className="px-1.5 py-0.5 bg-surface border border-surface-border rounded text-[10px] text-gray-300 font-mono">Ctrl+K</kbd>
+          </div>
+          <div className="flex items-center gap-2">
+            <kbd className="px-1.5 py-0.5 bg-surface border border-surface-border rounded text-[10px] text-gray-300 font-mono">Esc</kbd>
+            <span>to close</span>
+          </div>
         </div>
       </div>
     </div>
