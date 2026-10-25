@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   GitCompare, ArrowRight, ShieldAlert,
-  EyeOff, Plus, Minus, Edit3, Filter, Code2, Columns
+  EyeOff, Plus, Minus, Edit3, Filter, Code2, Columns,
+  Copy, Check
 } from 'lucide-react';
 import { Document, VersionComparison, DocumentChange } from '../types';
 import { VersionBadge } from '../components/VersionBadge';
@@ -22,6 +23,15 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
   const [comparison, setComparison] = useState<VersionComparison | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+  const [copiedDiff, setCopiedDiff] = useState(false);
+
+  const handleCopyDiff = () => {
+    if (comparison?.unified_diff) {
+      navigator.clipboard.writeText(comparison.unified_diff);
+      setCopiedDiff(true);
+      setTimeout(() => setCopiedDiff(false), 2000);
+    }
+  };
 
   const selectedDoc = documents.find((d) => d.id === selectedDocId);
 
@@ -255,9 +265,30 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
       ) : (
         /* Unified Code Diff View */
         <div className="bg-surface border border-surface-border rounded-xl p-5 shadow-sm">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3 font-mono">
-            Unified Line-by-Line Diff
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 font-mono">
+              Unified Line-by-Line Diff
+            </h3>
+            {comparison?.unified_diff && (
+              <button
+                onClick={handleCopyDiff}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono bg-surface-subtle hover:bg-surface-hover border border-surface-border rounded-lg text-gray-300 hover:text-white transition"
+                title="Copy unified diff to clipboard"
+              >
+                {copiedDiff ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Patch</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           <div className="bg-background border border-surface-border rounded-lg p-4 font-mono text-xs overflow-x-auto leading-relaxed">
             {comparison?.unified_diff ? (
               comparison.unified_diff.split('\n').map((line, i) => {
