@@ -409,7 +409,9 @@ class PartitionedHybridIndex:
         dense_ranks[dense_order] = np.arange(1, n + 1)
         bm25_ranks[bm25_order] = np.arange(1, n + 1)
 
-        max_possible_rrf = (dense_weight / (rrf_k + 1.0)) + (bm25_weight / (rrf_k + 1.0))
+        # Enforce positive smoothing constant for mathematical stability
+        safe_k = max(1, rrf_k)
+        max_possible_rrf = (dense_weight / (safe_k + 1.0)) + (bm25_weight / (safe_k + 1.0))
 
         # 4. Extract query API symbols & semantic concepts for Stage-3 AST Symbol Reranker
         query_symbols = extract_api_symbols(question)
@@ -424,9 +426,9 @@ class PartitionedHybridIndex:
             d_score = float(dense_scores[idx])
             b_score = float(bm25_norm[idx])
 
-            # Standard Reciprocal Rank Fusion: RRF(d) = 1/(60 + r_bm25(d)) + 1/(60 + r_dense(d))
-            standard_rrf = (1.0 / (rrf_k + b_rank)) + (1.0 / (rrf_k + d_rank))
-            rrf_raw = (dense_weight / (rrf_k + d_rank)) + (bm25_weight / (rrf_k + b_rank))
+            # Standard Reciprocal Rank Fusion: RRF(d) = 1/(k + r_bm25(d)) + 1/(k + r_dense(d))
+            standard_rrf = (1.0 / (safe_k + b_rank)) + (1.0 / (safe_k + d_rank))
+            rrf_raw = (dense_weight / (safe_k + d_rank)) + (bm25_weight / (safe_k + b_rank))
             rrf_normalized = rrf_raw / max_possible_rrf if max_possible_rrf > 0 else 0.0
 
             # AST Symbol Signature & Parameter Contract Boost
