@@ -37,6 +37,16 @@ class ParamASTNode:
             "param_source": self.param_source,
         }
 
+    def has_breaking_constraint_against(self, previous: "ParamASTNode") -> bool:
+        """Determines if this parameter introduces a breaking constraint relative to a previous version."""
+        # 1. Previously optional parameter turned mandatory
+        if previous.is_optional and not self.is_optional:
+            return True
+        # 2. Existing parameter lost its default fallback
+        if previous.default_value is not None and self.default_value is None and not self.is_optional:
+            return True
+        return False
+
 
 @dataclass
 class ReturnTypeNode:
@@ -121,6 +131,13 @@ class FunctionASTNode:
     @property
     def total_param_count(self) -> int:
         return len(self.params)
+
+    def get_param_by_name(self, name: str) -> Optional[ParamASTNode]:
+        """Look up a parameter node by its variable or argument name."""
+        for p in self.params:
+            if p.name.strip().lower() == name.strip().lower():
+                return p
+        return None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
