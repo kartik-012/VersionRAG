@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -8,6 +9,8 @@ from app.services.llm_provider_service import llm_provider_service
 
 router = APIRouter(tags=["Health & Runtime Config"])
 
+START_TIME = time.time()
+
 
 class LLMConfigUpdateRequest(BaseModel):
     provider: str
@@ -17,19 +20,26 @@ class LLMConfigUpdateRequest(BaseModel):
 
 @router.get("/health")
 def health_check(db: Session = Depends(get_db)):
-    """System health check verifying database connectivity and active LLM engine."""
+    """System health check verifying database connectivity, round-trip latency, and active LLM engine."""
+    t0 = time.perf_counter()
     try:
         db.execute(text("SELECT 1"))
+        db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
         db_status = "healthy"
     except Exception as e:
+        db_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
         db_status = f"unhealthy: {str(e)}"
 
     llm_cfg = llm_provider_service.get_config()
+    uptime_sec = round(time.time() - START_TIME, 1)
+
     return {
         "status": "online",
         "service": "VersionRAG API",
         "version": "1.0.0",
         "database": db_status,
+        "database_latency_ms": db_latency_ms,
+        "uptime_seconds": uptime_sec,
         "active_llm_provider": llm_cfg["active_provider"],
         "active_llm_model": llm_cfg["active_model"],
     }
