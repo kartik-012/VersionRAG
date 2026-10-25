@@ -19,6 +19,12 @@ import argparse
 import json
 import os
 import sys
+
+# Ensure backend directory is in sys.path
+_BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.code_scanner_service import code_scanner_service
@@ -223,6 +229,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--new-doc", type=str, default=None, help="Optional path to target doc/OpenAPI file")
     parser.add_argument("--json", action="store_true", help="Output structured JSON report for CI bots")
     parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default=None,
+        help="Optional file path to write audit report (useful for CI artifacts)",
+    )
+    parser.add_argument(
         "--no-fail",
         action="store_true",
         help="Always exit 0 even when breaking/silent changes are detected (advisory mode)",
@@ -253,9 +266,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     if args.json:
-        print(json.dumps(report, indent=2))
+        output_text = json.dumps(report, indent=2)
     else:
-        print(format_terminal_report(report, source_label))
+        output_text = format_terminal_report(report, source_label)
+
+    print(output_text)
+
+    if args.output:
+        try:
+            with open(args.output, "w", encoding="utf-8") as out_f:
+                out_f.write(output_text)
+        except Exception as e:
+            print(f"Warning: Failed to write output file {args.output}: {e}", file=sys.stderr)
 
     counts = report.get("summary_counts", {})
     has_failures = (
