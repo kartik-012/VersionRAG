@@ -118,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+      <nav role="navigation" aria-label="Main Navigation" className="flex-1 p-3 space-y-1.5 overflow-y-auto">
         {navItems.map((item) => {
           const active = currentView === item.id;
           return (
@@ -127,7 +127,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               whileHover={{ x: 4, transition: { duration: 0.15 } }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onChangeView(item.id)}
-              className={`w-full relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors group ${
+              aria-label={item.label}
+              aria-current={active ? 'page' : undefined}
+              className={`w-full relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-colors group focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                 active
                   ? 'text-white font-semibold shadow-md shadow-primary/25'
                   : 'text-gray-400 hover:text-gray-100 hover:bg-surface-hover/80'
