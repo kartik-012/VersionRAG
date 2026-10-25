@@ -12,6 +12,7 @@ import { CustomScenarioModal } from '../components/CustomScenarioModal';
 import { Card3D } from '../components/Card3D';
 import { VersionBadge } from '../components/VersionBadge';
 import { api } from '../lib/api';
+import { exportEvaluationAsJson, exportScenariosAsCsv } from '../lib/exportUtils';
 
 interface EvaluationViewProps {
   project: Project | null;
@@ -145,6 +146,19 @@ export const EvaluationView: React.FC<EvaluationViewProps> = ({ project }) => {
             <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
             <span>Add Custom Scenario</span>
           </motion.button>
+
+          {activeRun && (
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => exportEvaluationAsJson(activeRun)}
+              className="px-3 py-2 rounded-xl bg-surface-subtle hover:bg-surface-hover border border-surface-border text-gray-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition shadow-sm"
+              title="Export Benchmark JSON Report"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Export JSON</span>
+            </motion.button>
+          )}
 
           <motion.button
             whileHover={{ scale: 1.04 }}
