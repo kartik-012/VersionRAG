@@ -54,3 +54,17 @@ def test_rate_limiter_redis_fallback_and_sliding_window():
     limiter.reset(key)
     assert limiter.is_rate_limited(key, max_attempts=3, window_seconds=60) is False
 
+
+def test_access_token_payload_claims():
+    user_id = "user_demo_789"
+    email = "demo@versionrag.dev"
+    token = create_access_token(subject=user_id, email=email)
+    payload = decode_token(token, expected_type="access")
+
+    assert payload is not None
+    assert payload.get("sub") == user_id
+    assert payload.get("email") == email
+    assert payload.get("type") == "access"
+    assert "exp" in payload
+    assert "iat" in payload
+
