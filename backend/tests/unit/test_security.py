@@ -1,7 +1,7 @@
 from datetime import timedelta
 from app.core.security import (
     get_password_hash, verify_password,
-    create_token, decode_token,
+    create_token, decode_token, is_token_expired,
     create_access_token, create_refresh_token
 )
 
@@ -25,12 +25,15 @@ def test_token_type_safety():
     assert decode_token(refresh_tok, expected_type="access") is None
 
 def test_expired_token():
+    valid_tok = create_token(subject="user_123", token_type="access", expires_delta=timedelta(minutes=10))
     expired_tok = create_token(
         subject="user_123",
         token_type="access",
         expires_delta=timedelta(seconds=-10)
     )
     assert decode_token(expired_tok, expected_type="access") is None
+    assert is_token_expired(expired_tok, expected_type="access") is True
+    assert is_token_expired(valid_tok, expected_type="access") is False
 
 
 def test_rate_limiter_redis_fallback_and_sliding_window():
