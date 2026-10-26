@@ -1,12 +1,15 @@
 import { EvaluationRun } from '../types';
 
+const getDateStamp = () => new Date().toISOString().split('T')[0];
+
 /**
  * Downloads an EvaluationRun object as a formatted JSON report.
  */
 export function exportEvaluationAsJson(run: EvaluationRun, filename?: string): void {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(run, null, 2));
   const downloadAnchor = document.createElement('a');
-  const safeName = (filename || `${run.dataset_name || 'versionrag'}-benchmark-report`).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const baseName = filename || `${run.dataset_name || 'versionrag'}-benchmark-${getDateStamp()}`;
+  const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
   downloadAnchor.setAttribute('href', dataStr);
   downloadAnchor.setAttribute('download', `${safeName}.json`);
   document.body.appendChild(downloadAnchor);
@@ -44,11 +47,30 @@ export function exportScenariosAsCsv(run: EvaluationRun, filename?: string): voi
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  const safeName = (filename || `${run.dataset_name || 'versionrag'}-scenarios`).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const baseName = filename || `${run.dataset_name || 'versionrag'}-scenarios-${getDateStamp()}`;
+  const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
   link.setAttribute('href', url);
   link.setAttribute('download', `${safeName}.csv`);
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Formats key metrics as an ASCII terminal summary block.
+ */
+export function formatBenchmarkSummaryText(run: EvaluationRun): string {
+  const acc = (v: number) => `${(v * 100).toFixed(1)}%`;
+  return [
+    `=== Benchmark Summary: ${run.name} ===`,
+    `Dataset: ${run.dataset_name}`,
+    `Total Scenarios: ${run.total_scenarios} | Passed: ${run.passed_scenarios}`,
+    `Naive RAG Accuracy: ${acc(run.naive_rag_accuracy)}`,
+    `VersionRAG Accuracy: ${acc(run.versionrag_accuracy)}`,
+    `Cross-Version Contamination: ${acc(run.cross_version_contamination_rate ?? 0)}`,
+    `Retrieval Precision@6: ${acc(run.retrieval_precision)}`,
+    `Average Latency: ${run.average_latency_ms.toFixed(1)}ms`,
+    '======================================',
+  ].join('\n');
 }
