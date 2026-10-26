@@ -5,7 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.1-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![pgvector](https://img.shields.io/badge/pgvector-HNSW%20Supported-336791.svg?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
-[![Pytest](https://img.shields.io/badge/Pytest-43%2F43%20Passing-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
+[![Pytest](https://img.shields.io/badge/Pytest-45%2F45%20Passing-brightgreen.svg?logo=pytest&logoColor=white)](https://pytest.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > **Flagship Enterprise AI Platform designed to eliminate cross-version documentation contamination, detect silent AST breaking changes, and automatically audit & refactor production code across framework and OpenAPI upgrades.**
@@ -139,7 +139,7 @@ python start_app.py
 ```
 Open **`http://localhost:8001`** (or `http://localhost:8000`) in your browser!
 
-### 4. Run Automated Pytest Suite (40 Tests)
+### 4. Run Automated Pytest Suite (45 Tests)
 ```bash
 cd backend
 python -m pytest tests/ -v
@@ -153,6 +153,15 @@ python -m app.cli_audit \
   --from v14.0.0 \
   --to v16.0.0
 ```
+
+---
+
+## 🛡️ Production Engineering & Observability
+
+- **Low-Latency Profiling (`X-Process-Time-Ms`)**: Every API response injects an execution timestamp in milliseconds measured at the ASGI middleware boundary.
+- **Enterprise HTTP Hardening**: Built-in production security headers including `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, and `Referrer-Policy`.
+- **Resilient Connection Pooling**: PostgreSQL engine configured with `pool_pre_ping=True`, `pool_recycle=3600`, and automatic in-memory SQLite fallback.
+- **Zero-Failure Client Fallback**: Interactive client-side demo mode ensuring complete offline exploration even during cold starts or disconnected network states.
 
 ---
 
