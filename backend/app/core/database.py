@@ -25,6 +25,7 @@ else:
         db_url,
         echo=settings.SQL_DEBUG,
         pool_pre_ping=True,
+        pool_recycle=3600,
         pool_size=10,
         max_overflow=20
     )
