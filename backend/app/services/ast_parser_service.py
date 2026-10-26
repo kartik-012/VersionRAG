@@ -189,6 +189,22 @@ class ASTContractDiff:
             "details": self.details,
         }
 
+    def to_markdown_row(self) -> str:
+        """Render this contract diff as a single GitHub Flavored Markdown table row."""
+        breaking_badge = "💥 BREAKING" if self.is_breaking else "✅ COMPATIBLE"
+        sym = f"`{self.symbol_name}`"
+        summary = self.proof_summary.replace("|", "\\|")
+        return f"| {sym} | {self.change_category.upper()} | {self.severity_level.upper()} | {breaking_badge} | {summary} |"
+
+    @classmethod
+    def format_markdown_table(cls, diffs: List["ASTContractDiff"]) -> str:
+        """Render a collection of ASTContractDiff objects into a formatted Markdown report table."""
+        if not diffs:
+            return "_No contract mutations detected._"
+        header = "| Symbol | Category | Severity | Compatibility | Mutation Proof Summary |\n| :--- | :--- | :--- | :--- | :--- |"
+        rows = [d.to_markdown_row() for d in diffs]
+        return header + "\n" + "\n".join(rows)
+
 
 class ASTSignatureParserService:
     """
