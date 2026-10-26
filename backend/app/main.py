@@ -36,10 +36,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Production Security Headers Middleware
+import time
+
+# Request Profiling & Security Headers Middleware
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
+async def add_security_and_timing_headers(request: Request, call_next):
+    start_time = time.perf_counter()
     response = await call_next(request)
+    process_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    response.headers["X-Process-Time-Ms"] = str(process_time_ms)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
