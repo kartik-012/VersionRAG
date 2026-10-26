@@ -77,3 +77,7 @@ def decode_token(token: str, expected_type: str) -> Optional[Dict[str, Any]]:
         return payload
     except jwt.PyJWTError:
         return None
+
+def is_token_expired(token: str, expected_type: str = "access") -> bool:
+    """Return True if a token is expired, invalid, or type-mismatched."""
+    return decode_token(token, expected_type=expected_type) is None
