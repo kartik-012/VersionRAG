@@ -31,6 +31,9 @@ export const VersionBadge: React.FC<VersionBadgeProps> = ({ version, size = 'md'
 
   return (
     <span
+      title={`Release tag: ${version}`}
+      data-testid="version-badge"
+      aria-current={active ? 'true' : undefined}
       className={`inline-flex items-center gap-1.5 font-mono border ${colorClass} ${sizeClasses[size]} ${
         active ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''
       }`}
