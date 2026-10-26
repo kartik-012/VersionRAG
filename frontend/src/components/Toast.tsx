@@ -40,6 +40,8 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
           return (
             <motion.div
               key={t.id}
+              role="status"
+              aria-live="polite"
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
@@ -53,7 +55,9 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
               </div>
               <button
                 onClick={() => onDismiss(t.id)}
-                className="shrink-0 text-gray-500 hover:text-white p-0.5"
+                aria-label="Dismiss notification"
+                title="Dismiss notification"
+                className="shrink-0 text-gray-400 hover:text-white hover:bg-surface-hover rounded p-1 transition"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
