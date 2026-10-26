@@ -56,6 +56,16 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
+    @property
+    def is_sqlite(self) -> bool:
+        """Return True if currently configured with SQLite."""
+        return self.DATABASE_URL.lower().startswith("sqlite")
+
+    @property
+    def is_postgres(self) -> bool:
+        """Return True if currently configured with PostgreSQL / pgvector."""
+        return self.DATABASE_URL.lower().startswith("postgres")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
