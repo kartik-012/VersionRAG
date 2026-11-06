@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.models.conversation import QueryArchetype, ConfidenceLevel
@@ -24,6 +24,14 @@ class QueryRequest(BaseModel):
     target_version: Optional[str] = None
     scope: str = Field(default="current", description="current | specific | compare | all | temporal")
     compare_to_version: Optional[str] = None
+
+    @field_validator("question")
+    @classmethod
+    def sanitize_question(cls, v: str) -> str:
+        cleaned = " ".join(v.strip().split())
+        if len(cleaned) < 2:
+            raise ValueError("Question must contain at least 2 characters after whitespace trimming.")
+        return cleaned
 
 class MessageRead(BaseModel):
     id: str
