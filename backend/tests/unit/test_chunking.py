@@ -150,3 +150,12 @@ def test_openapi_json_upload_normalization_to_ast_diff():
     assert "HTTP_422" in charge_breaks[0]["summary"]
 
 
+def test_chunking_sanitization_and_null_byte_filtering():
+    raw_content = "# Module Alpha\x00\n\nThis is content with a \x00null byte and whitespace.\n\n"
+    chunks = chunking_service.chunk_document(raw_content, "Alpha Spec")
+    assert len(chunks) == 1
+    assert "\x00" not in chunks[0]["content"]
+    assert "null byte and whitespace." in chunks[0]["content"]
+    assert chunks[0]["token_count"] >= 1
+
+
