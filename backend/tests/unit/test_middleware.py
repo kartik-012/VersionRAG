@@ -15,3 +15,11 @@ def test_security_and_latency_headers_present(client: TestClient):
     assert resp.headers.get("x-frame-options") == "DENY"
     assert resp.headers.get("x-xss-protection") == "1; mode=block"
     assert resp.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+
+
+def test_health_ping_liveness_probe(client: TestClient):
+    resp = client.get("/api/v1/health/ping")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data == {"status": "ok", "ping": "pong"}
+    assert "x-process-time-ms" in resp.headers
