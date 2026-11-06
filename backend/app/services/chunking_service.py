@@ -10,6 +10,10 @@ class ChunkingService:
         """Approximate token count (roughly 4 characters per token)."""
         return max(1, len(text) // 4)
 
+    def sanitize_text(self, text: str) -> str:
+        """Remove null bytes and extraneous blank runs for indexing purity."""
+        return text.replace("\x00", "").strip()
+
     def chunk_document(self, content: str, title: str) -> List[Dict[str, Any]]:
         """
         Structure-aware semantic chunking.
@@ -98,19 +102,20 @@ class ChunkingService:
                     current_token_count += p_tokens
 
             if current_buffer:
-                chunk_text = "\n\n".join(current_buffer)
-                chunks.append({
-                    "chunk_index": chunk_idx,
-                    "section_title": sec_title,
-                    "page_number": page_estimate,
-                    "content": chunk_text,
-                    "token_count": current_token_count,
-                    "chunk_metadata": {
-                        "has_code": "```" in chunk_text,
-                        "section": sec_title
-                    }
-                })
-                chunk_idx += 1
+                chunk_text = self.sanitize_text("\n\n".join(current_buffer))
+                if chunk_text:
+                    chunks.append({
+                        "chunk_index": chunk_idx,
+                        "section_title": sec_title,
+                        "page_number": page_estimate,
+                        "content": chunk_text,
+                        "token_count": max(1, self.approximate_tokens(chunk_text)),
+                        "chunk_metadata": {
+                            "has_code": "```" in chunk_text,
+                            "section": sec_title
+                        }
+                    })
+                    chunk_idx += 1
 
         return chunks
 
