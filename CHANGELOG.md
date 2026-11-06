@@ -5,6 +5,22 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.3.0] - 2026-11-06
+
+### Added
+- **Ultra-Lightweight Liveness Probe (`/api/v1/health/ping`)**: High-performance HTTP 200 liveness check endpoint for Docker / Kubernetes container probes with zero database overhead.
+- **Query String Sanitization**: Whitespace trimming, line normalization, and empty question rejection on `QueryRequest` schema.
+- **Docker Healthcheck Coordination**: Added native Python healthcheck command and healthy container startup dependency in `docker-compose.yml`.
+- **Query Studio Session Reset**: Added quick reset control (`RotateCcw`) to clear conversation history in AI Query Studio.
+- **Tenant Boundary Security Policy**: Added live policy indicator and tenant partition verification badges to Workspace Settings view.
+
+### Enhanced
+- **Document Chunk Ingestion**: Hardened `ChunkingService` against null-byte characters and empty chunk insertion.
+- **Multi-Tenant Isolation Assurance**: Added regression test asserting 404 security enforcement on cross-tenant project listings.
+- **Benchmark Observability**: Documented latency targets and response timing metrics across API endpoints.
+
+---
+
 ## [1.2.0] - 2026-10-25
 
 ### Added
