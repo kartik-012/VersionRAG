@@ -27,3 +27,7 @@ def test_tenant_isolation_between_workspaces(client: TestClient):
     # User B tries to access Project A -> Returns 404
     resp_cross_proj = client.get(f"/api/v1/projects/{proj_a_id}", headers=headers_b)
     assert resp_cross_proj.status_code == 404
+
+    # User B tries to list projects inside Workspace A -> Returns 404
+    resp_cross_list = client.get(f"/api/v1/projects/workspace/{ws_a_id}", headers=headers_b)
+    assert resp_cross_list.status_code == 404
