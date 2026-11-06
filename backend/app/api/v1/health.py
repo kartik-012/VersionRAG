@@ -18,6 +18,12 @@ class LLMConfigUpdateRequest(BaseModel):
     model_name: Optional[str] = None
 
 
+@router.get("/health/ping")
+def health_ping():
+    """Ultra-lightweight liveness probe for Docker / Kubernetes health checks without database roundtrip."""
+    return {"status": "ok", "ping": "pong"}
+
+
 @router.get("/health")
 def health_check(db: Session = Depends(get_db)):
     """System health check verifying database connectivity, round-trip latency, and active LLM engine."""
