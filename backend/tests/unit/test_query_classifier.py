@@ -107,3 +107,20 @@ def test_multi_version_ambiguity_resolver_compatibility_matrix(db_session):
     assert statuses["v16.0.0"] == "Removed"
     assert "Multi-Version Compatibility Matrix" in res["answer"]
 
+
+def test_query_request_schema_sanitization():
+    import pytest
+    from app.schemas.rag import QueryRequest
+    from pydantic import ValidationError
+
+    # Normalizes excess inner and outer whitespace
+    req = QueryRequest(
+        question="   how does   assert.deepEqual    work in v15?   ",
+        project_id="proj-123"
+    )
+    assert req.question == "how does assert.deepEqual work in v15?"
+
+    # Rejects whitespace-only string
+    with pytest.raises(ValidationError):
+        QueryRequest(question="    ", project_id="proj-123")
+
