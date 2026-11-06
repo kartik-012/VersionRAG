@@ -102,6 +102,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Multi-Tenant Security & Partitioning Policy */}
+      <div className="bg-surface border border-surface-border rounded-xl p-5 shadow-sm space-y-3">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          Tenant Boundary & Isolation Security Policy
+        </h3>
+        <p className="text-xs text-gray-400 leading-relaxed">
+          VersionRAG enforces hard tenant isolation boundaries across all API endpoints, vector indexes,
+          and document storage tiers. Cross-workspace vector pollution is mathematically eliminated via
+          mandatory SQL partition predicates (<code className="text-primary-light font-mono">WHERE workspace_id = :id</code>).
+        </p>
+        <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-mono">
+          <span className="px-2.5 py-1 bg-surface-subtle border border-surface-border rounded-lg text-emerald-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Zero Cross-Tenant Leakage
+          </span>
+          <span className="px-2.5 py-1 bg-surface-subtle border border-surface-border rounded-lg text-cyan-400">
+            RBAC Scope: Owner / Admin / Member / Viewer
+          </span>
+          <span className="px-2.5 py-1 bg-surface-subtle border border-surface-border rounded-lg text-purple-400">
+            JWT Stateless Session Verification
+          </span>
+        </div>
+      </div>
     </div>
   );
 };
