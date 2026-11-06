@@ -328,28 +328,44 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
               </div>
             </div>
 
-            {/* Scope Switcher */}
-            <div className="flex items-center gap-1.5 bg-surface-subtle/80 p-1 rounded-xl border border-surface-border text-xs">
-              <span className="text-[10px] text-gray-500 font-medium px-2 uppercase tracking-wider font-mono">
-                Scope:
-              </span>
-              {[
-                { id: 'specific', label: 'Strict Version Scope' },
-                { id: 'compare', label: 'Compare Scope' },
-                { id: 'all', label: 'All Releases' },
-              ].map((sc) => (
+            {/* Scope Switcher & Session Controls */}
+            <div className="flex items-center gap-2">
+              {history.length > 0 && (
                 <button
-                  key={sc.id}
-                  onClick={() => setScope(sc.id as any)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    scope === sc.id
-                      ? 'bg-primary text-white font-semibold shadow-sm'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
+                  onClick={() => {
+                    setHistory([]);
+                    setStreamingAnswer('');
+                    setStreamStages([]);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-subtle/80 hover:bg-surface-hover border border-surface-border text-xs text-gray-400 hover:text-white transition"
+                  title="Clear conversation history"
                 >
-                  {sc.label}
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Reset Session</span>
                 </button>
-              ))}
+              )}
+              <div className="flex items-center gap-1.5 bg-surface-subtle/80 p-1 rounded-xl border border-surface-border text-xs">
+                <span className="text-[10px] text-gray-500 font-medium px-2 uppercase tracking-wider font-mono">
+                  Scope:
+                </span>
+                {[
+                  { id: 'specific', label: 'Strict Version Scope' },
+                  { id: 'compare', label: 'Compare Scope' },
+                  { id: 'all', label: 'All Releases' },
+                ].map((sc) => (
+                  <button
+                    key={sc.id}
+                    onClick={() => setScope(sc.id as any)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                      scope === sc.id
+                        ? 'bg-primary text-white font-semibold shadow-sm'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {sc.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
