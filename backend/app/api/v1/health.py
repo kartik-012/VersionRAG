@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
+from app.core.config import settings
 from app.services.llm_provider_service import llm_provider_service
 
 router = APIRouter(tags=["Health & Runtime Config"])
@@ -22,6 +23,17 @@ class LLMConfigUpdateRequest(BaseModel):
 def health_ping():
     """Ultra-lightweight liveness probe for Docker / Kubernetes health checks without database roundtrip."""
     return {"status": "ok", "ping": "pong"}
+
+
+@router.get("/health/version")
+def health_version():
+    """Return platform release version, service name, and engine metadata."""
+    return {
+        "version": "1.4.0",
+        "service": "VersionRAG",
+        "environment": "development" if settings.SQL_DEBUG else "production",
+        "database_engine": "sqlite" if settings.is_sqlite else "postgresql",
+    }
 
 
 @router.get("/health")
