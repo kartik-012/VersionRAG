@@ -425,6 +425,7 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
             <div className="relative rounded-2xl bg-background/80 border border-surface-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 shadow-inner p-3.5 transition">
               <textarea
                 rows={3}
+                aria-label="Version query input"
                 placeholder="Ask any version-specific question, API difference, deprecation timeline, or conflict..."
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
@@ -439,6 +440,7 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
               <div className="flex items-center justify-between pt-2 border-t border-surface-border/60 text-xs">
                 <span className="text-[11px] text-gray-500 font-mono hidden sm:inline">
                   Press <kbd className="px-1.5 py-0.5 rounded bg-surface-subtle text-gray-300">Ctrl + Enter</kbd> to analyze
+                  {question.length > 0 && <span className="ml-2 text-gray-500 font-sans">({question.length} chars)</span>}
                 </span>
 
                 <div className="flex items-center gap-2 ml-auto">
