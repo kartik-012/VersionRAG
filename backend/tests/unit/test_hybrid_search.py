@@ -4,6 +4,7 @@ from app.services.embedding_service import embedding_service
 from app.services.hybrid_index_service import (
     tokenize_code_aware,
     extract_api_symbols,
+    compute_rrf_score,
     BM25SparseIndex,
     DenseMatrixIndex,
     CrossEncoderReranker,
@@ -230,4 +231,22 @@ def test_partitioned_index_cache_and_invalidation():
     assert PartitionedIndexManager.query_pgvector_hnsw_candidates(
         db=None, project_id="proj-1", query_vector=[0.1] * 256, version_tag="v14.0.0"
     ) is None
+
+
+def test_compute_rrf_score():
+    """Validates compute_rrf_score raw and normalized reciprocal rank calculation."""
+    # Top rank (1, 1) must normalize to exactly 1.0
+    raw_top, norm_top = compute_rrf_score(1, 1, k=60)
+    assert round(norm_top, 4) == 1.0
+    assert raw_top > 0.0
+
+    # Rank degradation check (rank 1 vs rank 10)
+    raw_lower, norm_lower = compute_rrf_score(10, 10, k=60)
+    assert norm_lower < norm_top
+    assert norm_lower > 0.0
+
+    # Custom weights
+    raw_weighted, _ = compute_rrf_score(1, 2, k=60, dense_weight=2.0, bm25_weight=1.0)
+    assert raw_weighted > 0.0
+
 
