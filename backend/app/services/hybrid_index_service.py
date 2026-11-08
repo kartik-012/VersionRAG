@@ -104,6 +104,26 @@ def extract_api_symbols(text: str) -> Set[str]:
     return symbols
 
 
+def compute_rrf_score(
+    dense_rank: int,
+    bm25_rank: int,
+    k: int = 60,
+    dense_weight: float = 1.0,
+    bm25_weight: float = 1.0,
+) -> Tuple[float, float]:
+    """
+    Computes (raw_rrf, normalized_rrf) for given 1-based ranks and smoothing constant k.
+    Normalized score scales the result to [0.0, 1.0] relative to rank 1.
+    """
+    safe_k = max(1, k)
+    d_r = max(1, dense_rank)
+    b_r = max(1, bm25_rank)
+    raw = (dense_weight / (safe_k + d_r)) + (bm25_weight / (safe_k + b_r))
+    max_possible = (dense_weight / (safe_k + 1.0)) + (bm25_weight / (safe_k + 1.0))
+    normalized = raw / max_possible if max_possible > 0 else 0.0
+    return raw, normalized
+
+
 @dataclass
 class HybridSearchHit:
     """Rich diagnostic telemetry for a single hybrid-retrieved chunk."""
