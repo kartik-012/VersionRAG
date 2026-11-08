@@ -124,3 +124,13 @@ def test_query_request_schema_sanitization():
     with pytest.raises(ValidationError):
         QueryRequest(question="    ", project_id="proj-123")
 
+
+def test_rag_service_normalize_query_text():
+    from app.services.rag_service import rag_service
+
+    raw = "  What does `assert.deepEqual()` *actually* do in **v15**?  "
+    normalized = rag_service.normalize_query_text(raw)
+    assert normalized == "What does assert.deepEqual() actually do in v15?"
+    assert "`" not in normalized
+    assert "*" not in normalized
+
