@@ -409,4 +409,17 @@ class DiffService:
             "silent_changes": [s.get("summary") for s in silent]
         }
 
+    @staticmethod
+    def summarize_change_counts(changes: List[Dict[str, Any]]) -> Dict[str, int]:
+        """Calculates exact tallies across all change types and risk dimensions."""
+        return {
+            "total": len(changes),
+            "breaking": sum(1 for c in changes if c.get("is_breaking")),
+            "silent": sum(1 for c in changes if c.get("is_silent")),
+            "added": sum(1 for c in changes if c.get("change_type") in [ChangeType.ADDED, "added"]),
+            "deprecated": sum(1 for c in changes if c.get("change_type") in [ChangeType.DEPRECATED, "deprecated"]),
+            "removed": sum(1 for c in changes if c.get("change_type") in [ChangeType.REMOVED, "removed"]),
+            "modified": sum(1 for c in changes if c.get("change_type") in [ChangeType.MODIFIED, "modified"]),
+        }
+
 diff_service = DiffService()
