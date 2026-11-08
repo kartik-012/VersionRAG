@@ -322,6 +322,20 @@ class EvaluationService:
         raw_ratio = grounded_count / len(answer_tokens)
         return float(min(0.99, max(0.35, 0.45 + 0.54 * raw_ratio)))
 
+    @staticmethod
+    def calculate_f1_score(precision: float, recall: float) -> float:
+        """Calculates harmonic F1 score with safe division against zero values."""
+        if precision <= 0.0 or recall <= 0.0:
+            return 0.0
+        return round(2.0 * (precision * recall) / (precision + recall), 4)
+
+    @staticmethod
+    def calculate_macro_f1(f1_scores: List[float]) -> float:
+        """Calculates macro-averaged F1 score across multiple benchmark scenarios."""
+        if not f1_scores:
+            return 0.0
+        return round(sum(f1_scores) / len(f1_scores), 4)
+
     @classmethod
     def run_benchmark(
         cls,
