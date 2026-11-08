@@ -80,4 +80,18 @@ backend/tests/unit/test_security.py::test_expired_token                         
 
 ---
 
+## 5. Container Observability & Health Probes
+
+For Kubernetes cluster orchestration, Docker health checks, and SLA monitoring, VersionRAG exposes zero-overhead diagnostic probes:
+
+| Probe Endpoint | Purpose | SLA Latency |
+| :--- | :--- | :--- |
+| `GET /api/v1/health/ping` | Liveness & pod restart probe (zero DB overhead) | `< 1ms` |
+| `GET /api/v1/health` | Readiness & database engine connection verification | `< 5ms` |
+| `GET /api/v1/health/version` | Platform runtime metadata, version, and active DB engine | `< 2ms` |
+
+Additionally, every incoming API request is tagged with an `X-Process-Time-Ms` response header computed via ASGI middleware for real-time latency profiling.
+
+---
+
 👉 *Continue to [05. Interview Deep Dive](05_INTERVIEW_DEEP_DIVE.md).*
