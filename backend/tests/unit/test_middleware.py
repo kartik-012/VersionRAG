@@ -23,3 +23,14 @@ def test_health_ping_liveness_probe(client: TestClient):
     data = resp.json()
     assert data == {"status": "ok", "ping": "pong"}
     assert "x-process-time-ms" in resp.headers
+
+
+def test_health_version_metadata(client: TestClient):
+    resp = client.get("/api/v1/health/version")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["version"] == "1.4.0"
+    assert data["service"] == "VersionRAG"
+    assert "environment" in data
+    assert "database_engine" in data
+    assert "x-process-time-ms" in resp.headers
