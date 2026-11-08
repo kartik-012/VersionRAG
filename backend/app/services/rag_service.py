@@ -13,6 +13,12 @@ from app.core.config import settings
 
 class RAGService:
     @staticmethod
+    def normalize_query_text(question: str) -> str:
+        """Strip markdown ticks/emphasis and extraneous whitespace to optimize hybrid lexical and dense matching."""
+        cleaned = re.sub(r"[`*_~]+", "", question).strip()
+        return " ".join(cleaned.split())
+
+    @staticmethod
     def classify_query(question: str) -> Tuple[QueryArchetype, Optional[str], Optional[str]]:
         """
         Classifies user query into 1 of 8 archetypes and extracts targeted versions.
