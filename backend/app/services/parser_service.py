@@ -205,21 +205,30 @@ class ParserService:
         return "\n".join(lines).strip()
 
     @staticmethod
+    def sanitize_extracted_text(text: str) -> str:
+        """Sanitizes raw extracted content by stripping null bytes, normalizing CRLF to LF, and collapsing excessive blank lines."""
+        if not text:
+            return ""
+        cleaned = text.replace("\x00", "").replace("\r\n", "\n")
+        return re.sub(r"\n{4,}", "\n\n\n", cleaned).strip()
+
+    @staticmethod
     def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
         """Extracts clean text content from PDF, Markdown, TXT, JSON/YAML (including OpenAPI specs), HTML, DOCX."""
         ext = filename.split(".")[-1].lower() if "." in filename else "txt"
 
+        extracted = ""
         if ext == "pdf":
             try:
                 import pypdf
                 reader = pypdf.PdfReader(io.BytesIO(file_bytes))
                 text_parts = []
                 for i, page in enumerate(reader.pages):
-                    extracted = page.extract_text() or ""
-                    text_parts.append(f"--- Page {i+1} ---\n{extracted}")
-                return "\n\n".join(text_parts)
+                    page_text = page.extract_text() or ""
+                    text_parts.append(f"--- Page {i+1} ---\n{page_text}")
+                extracted = "\n\n".join(text_parts)
             except Exception:
-                return file_bytes.decode("utf-8", errors="ignore")
+                extracted = file_bytes.decode("utf-8", errors="ignore")
 
         elif ext in ["json", "yaml", "yml"]:
             raw_text = file_bytes.decode("utf-8", errors="ignore")
@@ -236,11 +245,14 @@ class ParserService:
             if isinstance(parsed_spec, dict):
                 normalized_md = ParserService.normalize_openapi_spec(parsed_spec)
                 if normalized_md:
-                    return normalized_md
-            return raw_text
+                    extracted = normalized_md
+                else:
+                    extracted = raw_text
+            else:
+                extracted = raw_text
 
         elif ext in ["md", "markdown", "txt"]:
-            return file_bytes.decode("utf-8", errors="ignore")
+            extracted = file_bytes.decode("utf-8", errors="ignore")
 
         elif ext in ["html", "htm"]:
             raw_html = file_bytes.decode("utf-8", errors="ignore")
@@ -249,17 +261,19 @@ class ParserService:
             clean_text = re.sub(r"<script.*?</script>", "", clean_text, flags=re.DOTALL | re.IGNORECASE)
             clean_text = re.sub(r"<[^>]+>", " ", clean_text)
             clean_text = re.sub(r"\s+", " ", clean_text)
-            return clean_text.strip()
+            extracted = clean_text.strip()
 
         elif ext == "docx":
             try:
                 import docx
                 doc = docx.Document(io.BytesIO(file_bytes))
-                return "\n\n".join([p.text for p in doc.paragraphs if p.text])
+                extracted = "\n\n".join([p.text for p in doc.paragraphs if p.text])
             except Exception:
-                return file_bytes.decode("utf-8", errors="ignore")
+                extracted = file_bytes.decode("utf-8", errors="ignore")
+        else:
+            extracted = file_bytes.decode("utf-8", errors="ignore")
 
-        return file_bytes.decode("utf-8", errors="ignore")
+        return ParserService.sanitize_extracted_text(extracted)
 
     @staticmethod
     def extract_metadata_and_version(content: str, filename: str) -> Dict[str, Any]:
