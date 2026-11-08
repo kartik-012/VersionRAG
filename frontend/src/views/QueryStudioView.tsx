@@ -820,7 +820,24 @@ export const QueryStudioView: React.FC<QueryStudioViewProps> = ({
                                     {cit.document_title}
                                   </span>
                                 </div>
-                                <VersionBadge version={cit.version_tag} size="sm" />
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCopyAnswer(cit.id, cit.snippet);
+                                    }}
+                                    title="Copy Citation Snippet"
+                                    aria-label="Copy Citation Snippet"
+                                    className="p-1 rounded hover:bg-surface-hover text-gray-400 hover:text-white transition"
+                                  >
+                                    {copiedId === cit.id ? (
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                  <VersionBadge version={cit.version_tag} size="sm" />
+                                </div>
                               </div>
 
                               <p className="text-[11px] text-gray-400 line-clamp-2 font-mono">
