@@ -1,7 +1,14 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.models.document import VersionStatus
+
+def sanitize_version_tag(raw: str) -> str:
+    """Sanitizes raw version tag inputs to ensure uniform representation and whitespace trimming."""
+    if not raw or not raw.strip():
+        return "v1.0.0"
+    cleaned = raw.strip()
+    return cleaned if cleaned.lower().startswith("v") else f"v{cleaned}"
 
 class DocumentFamilyBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
@@ -22,6 +29,11 @@ class DocumentVersionBase(BaseModel):
     version_tag: str
     normalized_version: Optional[str] = None
     release_date: Optional[datetime] = None
+
+    @field_validator("version_tag")
+    @classmethod
+    def validate_version_tag(cls, v: str) -> str:
+        return sanitize_version_tag(v)
 
 class DocumentVersionRead(DocumentVersionBase):
     id: str
