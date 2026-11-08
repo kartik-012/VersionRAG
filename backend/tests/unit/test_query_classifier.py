@@ -134,3 +134,25 @@ def test_rag_service_normalize_query_text():
     assert "`" not in normalized
     assert "*" not in normalized
 
+
+def test_evaluation_service_f1_metrics():
+    """Validates EvaluationService.calculate_f1_score and calculate_macro_f1."""
+    from app.services.evaluation_service import EvaluationService
+
+    # Perfect precision and recall gives 1.0
+    assert EvaluationService.calculate_f1_score(1.0, 1.0) == 1.0
+
+    # Balanced precision and recall
+    f1 = EvaluationService.calculate_f1_score(0.8, 0.6)
+    assert 0.68 <= f1 <= 0.69
+
+    # Zero precision or recall gives 0.0 without division by zero
+    assert EvaluationService.calculate_f1_score(0.0, 0.5) == 0.0
+    assert EvaluationService.calculate_f1_score(0.5, 0.0) == 0.0
+
+    # Macro F1 calculation
+    macro = EvaluationService.calculate_macro_f1([0.8, 0.6, 1.0])
+    assert macro == 0.8
+    assert EvaluationService.calculate_macro_f1([]) == 0.0
+
+
