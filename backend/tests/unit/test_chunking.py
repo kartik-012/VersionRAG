@@ -159,3 +159,12 @@ def test_chunking_sanitization_and_null_byte_filtering():
     assert chunks[0]["token_count"] >= 1
 
 
+def test_parser_service_sanitize_extracted_text():
+    dirty_text = "Line 1\r\nLine 2\x00\r\n\n\n\n\nLine 3\r\n"
+    cleaned = parser_service.sanitize_extracted_text(dirty_text)
+    assert "\x00" not in cleaned
+    assert "\r" not in cleaned
+    assert "\n\n\n\n" not in cleaned
+    assert "Line 1\nLine 2\n\n\nLine 3" == cleaned
+
+
