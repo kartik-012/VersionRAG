@@ -172,6 +172,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
+            aria-label="Select workspace"
+            title="Select workspace"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-subtle/80 hover:bg-surface-hover border border-surface-border text-gray-200 font-medium transition"
           >
             <span className="truncate max-w-[130px] font-semibold">
@@ -237,6 +239,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
+            aria-label="Select project track"
+            title="Select project track"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-subtle/80 hover:bg-surface-hover border border-surface-border text-blue-300 font-medium transition"
           >
             <span className="truncate max-w-[150px] font-semibold text-blue-400">
@@ -491,6 +495,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            aria-label="View notifications"
+            title="View notifications"
             className="p-2 rounded-xl bg-surface-subtle/80 hover:bg-surface-hover border border-surface-border text-gray-400 hover:text-white relative transition"
           >
             <Bell className="w-4 h-4" />
@@ -564,6 +570,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              aria-label="User account menu"
+              title="User account menu"
               className="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-xl bg-surface-subtle/80 hover:bg-surface-hover border border-surface-border text-xs text-gray-300 transition shadow-sm"
             >
               <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-[11px] shadow-sm">
