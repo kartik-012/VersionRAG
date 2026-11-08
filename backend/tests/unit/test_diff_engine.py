@@ -1,4 +1,4 @@
-from app.services.diff_service import diff_service
+from app.services.diff_service import DiffService, diff_service
 from app.services.ast_parser_service import ast_signature_parser
 from app.models.change import ChangeType, ChangeSeverity
 
@@ -324,6 +324,25 @@ def test_cli_audit_runner_exit_codes_and_output(capsys):
     captured_clean = capsys.readouterr()
     assert exit_code_clean == 0
     assert "[PASS] Zero breaking or silent behavioral vulnerabilities detected." in captured_clean.out
+
+
+def test_diff_service_summarize_change_counts():
+    """Validates DiffService.summarize_change_counts tallies across all risk dimensions."""
+    changes = [
+        {"change_type": "added", "is_breaking": False, "is_silent": False},
+        {"change_type": "deprecated", "is_breaking": False, "is_silent": False},
+        {"change_type": "removed", "is_breaking": True, "is_silent": False},
+        {"change_type": "modified", "is_breaking": True, "is_silent": True},
+    ]
+    summary = DiffService.summarize_change_counts(changes)
+    assert summary["total"] == 4
+    assert summary["breaking"] == 2
+    assert summary["silent"] == 1
+    assert summary["added"] == 1
+    assert summary["deprecated"] == 1
+    assert summary["removed"] == 1
+    assert summary["modified"] == 1
+
 
 
 
