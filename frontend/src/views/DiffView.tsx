@@ -83,6 +83,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
           <div className="flex items-center gap-2 bg-surface-subtle p-1 rounded-lg border border-surface-border">
             <button
               onClick={() => setMode('changes')}
+              aria-label="Switch to categorized changes mode"
               className={`px-3 py-1.5 rounded text-xs font-medium transition flex items-center gap-1.5 ${
                 mode === 'changes' ? 'bg-primary text-white font-semibold' : 'text-gray-400 hover:text-white'
               }`}
@@ -92,6 +93,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
             </button>
             <button
               onClick={() => setMode('unified')}
+              aria-label="Switch to unified code diff mode"
               className={`px-3 py-1.5 rounded text-xs font-medium transition flex items-center gap-1.5 ${
                 mode === 'unified' ? 'bg-primary text-white font-semibold' : 'text-gray-400 hover:text-white'
               }`}
@@ -109,6 +111,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
             <select
               value={selectedDocId}
               onChange={(e) => setSelectedDocId(e.target.value)}
+              aria-label="Select document family"
               className="w-full bg-surface-subtle border border-surface-border text-xs rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
             >
               {documents.map((d) => (
@@ -124,6 +127,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
             <select
               value={fromVersionId}
               onChange={(e) => setFromVersionId(e.target.value)}
+              aria-label="Select base comparison version"
               className="w-full bg-surface-subtle border border-surface-border text-xs rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
             >
               {selectedDoc?.versions.map((v) => (
@@ -139,6 +143,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
             <select
               value={toVersionId}
               onChange={(e) => setToVersionId(e.target.value)}
+              aria-label="Select target comparison version"
               className="w-full bg-surface-subtle border border-surface-border text-xs rounded-lg px-3 py-2 text-white focus:outline-none focus:border-primary"
             >
               {selectedDoc?.versions.map((v) => (
@@ -272,6 +277,7 @@ export const DiffView: React.FC<DiffViewProps> = ({ documents }) => {
             {comparison?.unified_diff && (
               <button
                 onClick={handleCopyDiff}
+                aria-label="Copy unified patch"
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono bg-surface-subtle hover:bg-surface-hover border border-surface-border rounded-lg text-gray-300 hover:text-white transition"
                 title="Copy unified diff to clipboard"
               >
