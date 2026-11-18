@@ -115,6 +115,18 @@ sequenceDiagram
 
 ---
 
+### 🏛️ Pillar 4: Vectorized BLAS Hybrid Search & Reciprocal Rank Fusion (RRF)
+
+To achieve sub-6ms retrieval without CPU loops, the hybrid index combines dense embeddings, code-aware Okapi BM25, and mathematical rank fusion:
+
+1. **BLAS Matrix Multiplication:** Dense chunk embeddings are stacked into contiguous NumPy matrices for $O(1)$ vectorized dot products ($\text{Cosine} = \mathbf{Q} \cdot \mathbf{M}^T$).
+2. **Code-Aware BM25:** Lexical indexing decomposes CamelCase, PascalCase, and dotted identifiers (e.g. `assert.deepStrictEqual` -> `assert`, `deep`, `strict`, `equal`).
+3. **Reciprocal Rank Fusion Formulation:**
+   $$RRF(d) = \frac{w_{\text{dense}}}{k + r_{\text{dense}}(d)} + \frac{w_{\text{bm25}}}{k + r_{\text{bm25}}(d)}$$
+   with default smoothing parameter $k = 60$ and normalized scaling relative to rank 1.
+
+---
+
 ## 3. Relational & Vector Data Model
 
 ```mermaid
