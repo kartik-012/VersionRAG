@@ -33,4 +33,6 @@ def test_health_version_metadata(client: TestClient):
     assert data["service"] == "VersionRAG"
     assert "environment" in data
     assert "database_engine" in data
+    assert "uptime_seconds" in data
+    assert data["uptime_seconds"] >= 0
     assert "x-process-time-ms" in resp.headers
