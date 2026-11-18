@@ -1,6 +1,15 @@
+import re
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
+
+def slugify_project_name(name: str) -> str:
+    """Generates a URL-safe, lowercase alphanumeric hyphenated slug from a project name."""
+    if not name:
+        return "project"
+    slug = re.sub(r"[^\w\s-]", "", name).strip().lower()
+    slug = re.sub(r"[-\s]+", "-", slug)
+    return slug or "project"
 
 class ProjectBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
