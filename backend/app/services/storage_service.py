@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import hashlib
 from typing import Tuple
@@ -9,6 +10,15 @@ class StorageService:
     def __init__(self, base_dir: str = settings.STORAGE_LOCAL_DIR):
         self.base_dir = base_dir
         os.makedirs(self.base_dir, exist_ok=True)
+
+    @staticmethod
+    def sanitize_storage_filename(filename: str) -> str:
+        """Sanitizes filename by stripping directory separators, control chars, and keeping extension safe."""
+        if not filename:
+            return "upload.bin"
+        base = os.path.basename(filename.replace("\\", "/"))
+        cleaned = re.sub(r"[^\w\.\-\_]", "_", base).strip("._")
+        return cleaned or "upload.bin"
 
     def validate_file(self, file: UploadFile) -> str:
         """Validate filename, extension, and MIME type."""
