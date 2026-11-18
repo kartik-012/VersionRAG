@@ -5,6 +5,20 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.4.0] - 2026-11-08
+
+### Added
+- **Platform Version & Runtime Metadata Probe (`/api/v1/health/version`)**: Real-time probe exposing platform version (`1.4.0`), service descriptor, environment tier, and active database dialect without database roundtrip overhead.
+- **Query Markdown & Lexical Normalizer (`RAGService.normalize_query_text`)**: Automated backtick, emphasis, and markdown symbol stripping to optimize dense and lexical hybrid search matching.
+- **Parser Document Text Sanitizer (`ParserService.sanitize_extracted_text`)**: CRLF to LF normalization, null-byte eradication, and multiple consecutive blank-line collapsing across Markdown, PDF, and text extractors.
+- **Multi-Dimensional Diff Metrics (`DiffService.summarize_change_counts`)**: Granular change metrics aggregator computing breaking, silent, added, deprecated, removed, and modified counts.
+- **Reciprocal Rank Fusion Mathematical Engine (`compute_rrf_score`)**: Isolated standalone RRF utility calculating raw and bounded [0.0, 1.0] normalized scores with configurable rank weights.
+- **Precision-Recall F1 Benchmark Utilities (`EvaluationService.calculate_f1_score`, `calculate_macro_f1`)**: Harmonic and macro-averaged F1 evaluation calculations with safe division guards.
+- **Query Studio Character Counter & A11y Attributes**: Live input character counter indicator, accessible ARIA labels on search textarea, and one-click citation snippet clipboard copying.
+- **Navbar Controls Accessibility**: Accessible `aria-label` and `title` attributes across Workspace, Project, Notifications, and Profile navigation menus.
+
+---
+
 ## [1.3.0] - 2026-11-06
 
 ### Added
