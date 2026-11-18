@@ -10,6 +10,15 @@ class ChunkingService:
         """Approximate token count (roughly 4 characters per token)."""
         return max(1, len(text) // 4)
 
+    @staticmethod
+    def calculate_chunk_overlap(content_len: int, chunk_size: int, overlap_ratio: float = 0.15) -> int:
+        """Calculates optimal token or character overlap bounded between 0 and half the chunk size."""
+        if chunk_size <= 0:
+            return 0
+        raw_overlap = int(chunk_size * overlap_ratio)
+        max_overlap = chunk_size // 2
+        return max(0, min(raw_overlap, max_overlap))
+
     def sanitize_text(self, text: str) -> str:
         """Remove null bytes and extraneous blank runs for indexing purity."""
         return text.replace("\x00", "").strip()
