@@ -178,4 +178,15 @@ def test_storage_service_sanitize_storage_filename():
     assert StorageService.sanitize_storage_filename("") == "upload.bin"
 
 
+def test_chunking_service_calculate_chunk_overlap():
+    """Validates calculate_chunk_overlap bounds and ratios."""
+    from app.services.chunking_service import ChunkingService
+
+    assert ChunkingService.calculate_chunk_overlap(1000, 500, 0.1) == 50
+    assert ChunkingService.calculate_chunk_overlap(1000, 500, 0.2) == 100
+    assert ChunkingService.calculate_chunk_overlap(1000, 500, 0.8) == 250
+    assert ChunkingService.calculate_chunk_overlap(1000, 0, 0.1) == 0
+
+
+
 
