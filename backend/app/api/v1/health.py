@@ -33,6 +33,7 @@ def health_version():
         "service": "VersionRAG",
         "environment": "development" if settings.SQL_DEBUG else "production",
         "database_engine": "sqlite" if settings.is_sqlite else "postgresql",
+        "uptime_seconds": round(time.time() - START_TIME, 1),
     }
 
 
