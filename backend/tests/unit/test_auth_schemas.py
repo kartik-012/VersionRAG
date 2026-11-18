@@ -53,3 +53,14 @@ def test_document_version_base_validation():
     ver2 = DocumentVersionBase(version_tag="  v20.0.1  ")
     assert ver2.version_tag == "v20.0.1"
 
+
+def test_slugify_project_name():
+    """Validates slugify_project_name generates clean URL-safe slugs."""
+    from app.schemas.project import slugify_project_name
+
+    assert slugify_project_name("Node.js Documentation") == "nodejs-documentation"
+    assert slugify_project_name("FastAPI & Python 3.12") == "fastapi-python-312"
+    assert slugify_project_name("   Spaces   &   Tabs   ") == "spaces-tabs"
+    assert slugify_project_name("") == "project"
+
+
