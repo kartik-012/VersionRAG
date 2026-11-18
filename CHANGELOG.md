@@ -5,6 +5,18 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [1.5.0] - 2026-11-18
+
+### Added
+- **URL-Safe Project Slugifier (`slugify_project_name`)**: Safe slug generation utility removing special characters, collapsing whitespace, and ensuring valid URL parameters.
+- **Storage Upload Path Sanitizer (`StorageService.sanitize_storage_filename`)**: Directory traversal defense and unsafe character cleansing on uploaded document files.
+- **Dynamic Chunk Overlap Calculator (`ChunkingService.calculate_chunk_overlap`)**: Context window overlap optimizer bounded between 0 and 50% chunk size.
+- **Document Manager Search Filter & Clear Control**: Live client-side document family search filtering with quick clear action button.
+- **Diff Studio Accessibility & Navigation Attributes**: Added semantic ARIA labels for comparison dropdowns, mode switchers, and clipboard patch copy triggers.
+- **Health Version Uptime Instrumentation**: Exposes continuous process uptime seconds in `/api/v1/health/version` without database overhead.
+
+---
+
 ## [1.4.0] - 2026-11-08
 
 ### Added
