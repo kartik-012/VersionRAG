@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   FileText, Plus, ExternalLink, Trash2,
-  Calendar, Layers, CheckCircle2, ChevronRight
+  Calendar, Layers, CheckCircle2, ChevronRight,
+  Search, X
 } from 'lucide-react';
 import { Document, DocumentVersion } from '../types';
 import { VersionBadge } from '../components/VersionBadge';
@@ -19,6 +20,18 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
   onSelectVersion,
   onDeleteDocument,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredDocs = useMemo(() => {
+    if (!searchQuery.trim()) return documents;
+    const q = searchQuery.toLowerCase();
+    return documents.filter(
+      (doc) =>
+        doc.title.toLowerCase().includes(q) ||
+        (doc.description && doc.description.toLowerCase().includes(q))
+    );
+  }, [documents, searchQuery]);
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -38,9 +51,31 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
         </button>
       </div>
 
+      {/* Filter and Search Bar */}
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Filter document families..."
+          aria-label="Filter document families"
+          className="w-full bg-surface-subtle border border-surface-border rounded-xl pl-9 pr-9 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-primary transition"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            aria-label="Clear document filter"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
       {/* Document Family Cards Grid */}
       <div className="grid grid-cols-1 gap-5">
-        {documents.map((doc) => (
+        {filteredDocs.map((doc) => (
           <div
             key={doc.id}
             className="bg-surface border border-surface-border rounded-xl p-5 shadow-sm space-y-4 hover:border-gray-700 transition"
@@ -111,6 +146,20 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
             </div>
           </div>
         ))}
+
+        {documents.length > 0 && filteredDocs.length === 0 && (
+          <div className="text-center py-12 bg-surface/50 border border-surface-border rounded-xl p-6">
+            <p className="text-xs text-gray-400">
+              No document families match "<span className="text-white font-medium">{searchQuery}</span>".
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-2 text-xs text-primary-light hover:underline font-medium"
+            >
+              Clear search filter
+            </button>
+          </div>
+        )}
 
         {documents.length === 0 && (
           <div className="text-center py-16 bg-surface border border-surface-border rounded-xl p-8">
