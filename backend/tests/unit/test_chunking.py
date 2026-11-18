@@ -168,3 +168,14 @@ def test_parser_service_sanitize_extracted_text():
     assert "Line 1\nLine 2\n\n\nLine 3" == cleaned
 
 
+def test_storage_service_sanitize_storage_filename():
+    """Validates sanitize_storage_filename prevents path traversal and cleans unsafe chars."""
+    from app.services.storage_service import StorageService
+
+    assert StorageService.sanitize_storage_filename("../../etc/passwd.txt") == "passwd.txt"
+    assert StorageService.sanitize_storage_filename("..\\..\\windows\\system32.dll") == "system32.dll"
+    assert StorageService.sanitize_storage_filename("API Spec (v2.0).md") == "API_Spec__v2.0_.md"
+    assert StorageService.sanitize_storage_filename("") == "upload.bin"
+
+
+
